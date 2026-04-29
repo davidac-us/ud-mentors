@@ -35,7 +35,7 @@ function Community() {
         .select("id, name")
         .in("id", ids)
         .eq("kind", "group");
-      setGroups(t ?? []);
+      setGroups((t ?? []).map((x) => ({ id: x.id, name: x.name ?? "Group" })));
     } else {
       setGroups([]);
     }

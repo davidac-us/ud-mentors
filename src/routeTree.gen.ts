@@ -14,8 +14,12 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppProfileRouteImport } from './routes/app.profile'
+import { Route as AppEventsRouteImport } from './routes/app.events'
 import { Route as AppDiscoverRouteImport } from './routes/app.discover'
+import { Route as AppCommunityRouteImport } from './routes/app.community'
 import { Route as AppChatsRouteImport } from './routes/app.chats'
+import { Route as AppThreadThreadIdRouteImport } from './routes/app.thread.$threadId'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -42,14 +46,34 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppProfileRoute = AppProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppEventsRoute = AppEventsRouteImport.update({
+  id: '/events',
+  path: '/events',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDiscoverRoute = AppDiscoverRouteImport.update({
   id: '/discover',
   path: '/discover',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCommunityRoute = AppCommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppChatsRoute = AppChatsRouteImport.update({
   id: '/chats',
   path: '/chats',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppThreadThreadIdRoute = AppThreadThreadIdRouteImport.update({
+  id: '/thread/$threadId',
+  path: '/thread/$threadId',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -60,7 +84,11 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
   '/app/chats': typeof AppChatsRoute
+  '/app/community': typeof AppCommunityRoute
   '/app/discover': typeof AppDiscoverRoute
+  '/app/events': typeof AppEventsRoute
+  '/app/profile': typeof AppProfileRoute
+  '/app/thread/$threadId': typeof AppThreadThreadIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -69,7 +97,11 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
   '/app/chats': typeof AppChatsRoute
+  '/app/community': typeof AppCommunityRoute
   '/app/discover': typeof AppDiscoverRoute
+  '/app/events': typeof AppEventsRoute
+  '/app/profile': typeof AppProfileRoute
+  '/app/thread/$threadId': typeof AppThreadThreadIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -79,7 +111,11 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
   '/app/chats': typeof AppChatsRoute
+  '/app/community': typeof AppCommunityRoute
   '/app/discover': typeof AppDiscoverRoute
+  '/app/events': typeof AppEventsRoute
+  '/app/profile': typeof AppProfileRoute
+  '/app/thread/$threadId': typeof AppThreadThreadIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -90,7 +126,11 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/signup'
     | '/app/chats'
+    | '/app/community'
     | '/app/discover'
+    | '/app/events'
+    | '/app/profile'
+    | '/app/thread/$threadId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -99,7 +139,11 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/signup'
     | '/app/chats'
+    | '/app/community'
     | '/app/discover'
+    | '/app/events'
+    | '/app/profile'
+    | '/app/thread/$threadId'
   id:
     | '__root__'
     | '/'
@@ -108,7 +152,11 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/signup'
     | '/app/chats'
+    | '/app/community'
     | '/app/discover'
+    | '/app/events'
+    | '/app/profile'
+    | '/app/thread/$threadId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -156,11 +204,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/profile': {
+      id: '/app/profile'
+      path: '/profile'
+      fullPath: '/app/profile'
+      preLoaderRoute: typeof AppProfileRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/events': {
+      id: '/app/events'
+      path: '/events'
+      fullPath: '/app/events'
+      preLoaderRoute: typeof AppEventsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/discover': {
       id: '/app/discover'
       path: '/discover'
       fullPath: '/app/discover'
       preLoaderRoute: typeof AppDiscoverRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/community': {
+      id: '/app/community'
+      path: '/community'
+      fullPath: '/app/community'
+      preLoaderRoute: typeof AppCommunityRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/chats': {
@@ -170,17 +239,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppChatsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/thread/$threadId': {
+      id: '/app/thread/$threadId'
+      path: '/thread/$threadId'
+      fullPath: '/app/thread/$threadId'
+      preLoaderRoute: typeof AppThreadThreadIdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppChatsRoute: typeof AppChatsRoute
+  AppCommunityRoute: typeof AppCommunityRoute
   AppDiscoverRoute: typeof AppDiscoverRoute
+  AppEventsRoute: typeof AppEventsRoute
+  AppProfileRoute: typeof AppProfileRoute
+  AppThreadThreadIdRoute: typeof AppThreadThreadIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppChatsRoute: AppChatsRoute,
+  AppCommunityRoute: AppCommunityRoute,
   AppDiscoverRoute: AppDiscoverRoute,
+  AppEventsRoute: AppEventsRoute,
+  AppProfileRoute: AppProfileRoute,
+  AppThreadThreadIdRoute: AppThreadThreadIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
