@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Globe, Plus, Users } from "lucide-react";
 import { Header, Avatar, Loader } from "./app.discover";
+import { useT } from "@/lib/i18n";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/community")({
@@ -17,6 +18,7 @@ const GLOBAL_ID = "00000000-0000-0000-0000-000000000001";
 
 function Community() {
   const { user } = useAuth();
+  const { t } = useT();
   const [groups, setGroups] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -66,7 +68,7 @@ function Community() {
     if (error || !thread) { toast.error(error?.message ?? "Failed"); return; }
     const memberRows = [{ thread_id: thread.id, user_id: user.id }, ...picked.map((p) => ({ thread_id: thread.id, user_id: p.id }))];
     await supabase.from("thread_members").insert(memberRows);
-    toast.success("Group created!");
+    toast.success(t("community.created"));
     setOpen(false);
     setNewName(""); setPicked([]); setEmailQuery(""); setResults([]);
     load();
@@ -76,7 +78,7 @@ function Community() {
 
   return (
     <div className="px-5 pb-6 pt-6">
-      <Header title="Community" subtitle="Connect with international students" />
+      <Header title={t("community.title")} subtitle={t("community.subtitle")} />
 
       <Link
         to="/app/thread/$threadId"
@@ -88,23 +90,23 @@ function Community() {
           <Globe className="h-6 w-6" />
         </div>
         <div>
-          <p className="font-semibold">Global Chat</p>
-          <p className="text-sm text-white/80">Everyone's here. Say hi.</p>
+          <p className="font-semibold">{t("community.global")}</p>
+          <p className="text-sm text-white/80">{t("community.globalDesc")}</p>
         </div>
       </Link>
 
       <div className="mb-3 mt-6 flex items-center justify-between">
-        <h2 className="font-semibold">Group chats</h2>
+        <h2 className="font-semibold">{t("community.groups")}</h2>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" variant="outline"><Plus className="mr-1 h-4 w-4" /> New</Button>
+            <Button size="sm" variant="outline"><Plus className="mr-1 h-4 w-4" /> {t("common.new")}</Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>New group chat</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{t("community.newGroup")}</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <Input placeholder="Group name" value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={60} />
+              <Input placeholder={t("community.groupName")} value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={60} />
               <div>
-                <Input placeholder="Search members by name…" value={emailQuery} onChange={(e) => search(e.target.value)} />
+                <Input placeholder={t("community.searchMembers")} value={emailQuery} onChange={(e) => search(e.target.value)} />
                 {results.length > 0 && (
                   <div className="mt-2 space-y-1">
                     {results.map((r) => (
@@ -132,7 +134,7 @@ function Community() {
                   </div>
                 )}
               </div>
-              <Button onClick={createGroup} disabled={!newName.trim()} className="w-full">Create group</Button>
+              <Button onClick={createGroup} disabled={!newName.trim()} className="w-full">{t("community.createGroup")}</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -140,7 +142,7 @@ function Community() {
 
       {groups.length === 0 ? (
         <div className="rounded-2xl bg-card p-6 text-center text-sm text-muted-foreground shadow-[var(--shadow-soft)]">
-          No group chats yet. Create one to get started.
+          {t("community.empty")}
         </div>
       ) : (
         <div className="space-y-2">

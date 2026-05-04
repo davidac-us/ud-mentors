@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Heart, X, Sparkles, Check, MapPin, GraduationCap } from "lucide-react";
+import { useT } from "@/lib/i18n";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/discover")({
@@ -33,6 +34,7 @@ function Discover() {
 
 function MenteeSwipe() {
   const { user } = useAuth();
+  const { t } = useT();
   const [mentors, setMentors] = useState<Profile[]>([]);
   const [idx, setIdx] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -63,7 +65,7 @@ function MenteeSwipe() {
     await supabase.from("swipes").insert({ swiper_id: user.id, target_id: m.id, liked });
     if (liked) {
       await supabase.from("match_requests").insert({ mentee_id: user.id, mentor_id: m.id });
-      toast.success(`Request sent to ${m.full_name.split(" ")[0]}!`);
+      toast.success(`${t("discover.requestSent")} ${m.full_name.split(" ")[0]}!`);
     }
     setIdx((i) => i + 1);
   };
@@ -108,7 +110,9 @@ function MenteeSwipe() {
 }
 
 function MentorCard({ p }: { p: Profile }) {
+  const { t } = useT();
   const initials = p.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+  const yearLabel = p.academic_year ? t(`year.${p.academic_year}`) : "";
   return (
     <div className="overflow-hidden rounded-3xl bg-card shadow-[var(--shadow-card)]">
       <div
@@ -129,7 +133,7 @@ function MentorCard({ p }: { p: Profile }) {
               <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{p.home_country}</span>
             )}
             {p.academic_year && (
-              <span className="inline-flex items-center gap-1"><GraduationCap className="h-3.5 w-3.5" />{p.academic_year}{p.major ? ` · ${p.major}` : ""}</span>
+              <span className="inline-flex items-center gap-1"><GraduationCap className="h-3.5 w-3.5" />{yearLabel}{p.major ? ` · ${p.major}` : ""}</span>
             )}
           </div>
         </div>
@@ -143,16 +147,16 @@ function MentorCard({ p }: { p: Profile }) {
         )}
 
         {p.prompt_fun_fact && (
-          <Prompt label="Fun fact" text={p.prompt_fun_fact} />
+          <Prompt label={t("discover.funFact")} text={p.prompt_fun_fact} />
         )}
         {p.prompt_advice && (
-          <Prompt label="Best advice I got" text={p.prompt_advice} />
+          <Prompt label={t("discover.bestAdvice")} text={p.prompt_advice} />
         )}
         {p.prompt_looking_for && (
-          <Prompt label="Mentees I'd love to meet" text={p.prompt_looking_for} />
+          <Prompt label={t("discover.menteesWant")} text={p.prompt_looking_for} />
         )}
         {p.languages.length > 0 && (
-          <p className="text-xs text-muted-foreground">Speaks {p.languages.join(", ")}</p>
+          <p className="text-xs text-muted-foreground">{t("discover.speaks")} {p.languages.join(", ")}</p>
         )}
       </div>
     </div>
@@ -170,6 +174,7 @@ function Prompt({ label, text }: { label: string; text: string }) {
 
 function MentorRequests() {
   const { user } = useAuth();
+  const { t } = useT();
   const [requests, setRequests] = useState<Array<{ id: string; mentee_id: string; status: string; profile: Profile | null }>>([]);
   const [loading, setLoading] = useState(true);
 
@@ -211,7 +216,7 @@ function MentorRequests() {
         ]);
         await supabase.from("match_requests").update({ status: "accepted", thread_id: thread.id }).eq("id", req.id);
       }
-      toast.success("Match accepted! Say hi in Chats.");
+      toast.success(t("requests.accepted"));
     } else {
       await supabase.from("match_requests").update({ status: "declined" }).eq("id", req.id);
     }
@@ -222,9 +227,9 @@ function MentorRequests() {
 
   return (
     <div className="px-5 pb-6 pt-6">
-      <Header title="Requests" subtitle="Mentees who want to connect" />
+      <Header title={t("requests.title")} subtitle={t("requests.subtitle")} />
       {requests.length === 0 ? (
-        <EmptyState icon={<Heart className="h-8 w-8" />} title="No requests yet" desc="When a mentee likes your profile, they'll show up here." />
+        <EmptyState icon={<Heart className="h-8 w-8" />} title={t("requests.empty.title")} desc={t("requests.empty.desc")} />
       ) : (
         <div className="space-y-4">
           {requests.map((r) =>
@@ -235,7 +240,7 @@ function MentorRequests() {
                   <div className="flex-1 min-w-0">
                     <p className="truncate font-semibold">{r.profile.full_name}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {r.profile.home_country} · {r.profile.major || r.profile.academic_year}
+                      {r.profile.home_country} · {r.profile.major || (r.profile.academic_year ? t(`year.${r.profile.academic_year}`) : "")}
                     </p>
                   </div>
                 </div>
@@ -244,10 +249,10 @@ function MentorRequests() {
                 )}
                 <div className="mt-3 flex gap-2">
                   <Button onClick={() => respond(r, false)} variant="outline" className="flex-1">
-                    <X className="mr-1 h-4 w-4" /> Decline
+                    <X className="mr-1 h-4 w-4" /> {t("common.decline")}
                   </Button>
                   <Button onClick={() => respond(r, true)} className="flex-1">
-                    <Check className="mr-1 h-4 w-4" /> Accept
+                    <Check className="mr-1 h-4 w-4" /> {t("common.accept")}
                   </Button>
                 </div>
               </div>

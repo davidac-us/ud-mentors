@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useT } from "@/lib/i18n";
 import { toast } from "sonner";
 import { GraduationCap, UserCog, ArrowLeft, ArrowRight } from "lucide-react";
 
@@ -22,6 +23,7 @@ const INTERESTS = [
 
 function Onboarding() {
   const { user, profile, loading, refreshProfile } = useAuth();
+  const { t } = useT();
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -73,76 +75,76 @@ function Onboarding() {
 
     await refreshProfile();
     setSaving(false);
-    toast.success("You're all set!");
+    toast.success(t("onb.done"));
     navigate({ to: "/app/discover" });
   };
 
   const steps = [
     {
-      title: "I'm signing up as a…",
+      title: t("onb.role.title"),
       content: (
         <div className="space-y-3">
           <RoleCard
             active={role === "first_year"}
             onClick={() => setRole("first_year")}
             icon={<GraduationCap className="h-6 w-6" />}
-            title="First-year international student"
-            desc="Looking to find a mentor who's been through it."
+            title={t("onb.role.firstYear")}
+            desc={t("onb.role.firstYearDesc")}
           />
           <RoleCard
             active={role === "mentor"}
             onClick={() => setRole("mentor")}
             icon={<UserCog className="h-6 w-6" />}
-            title="Experienced student mentor"
-            desc="I've been here a while and want to help others."
+            title={t("onb.role.mentor")}
+            desc={t("onb.role.mentorDesc")}
           />
         </div>
       ),
       valid: true,
     },
     {
-      title: "Tell us about you",
+      title: t("onb.about.title"),
       content: (
         <div className="space-y-4">
           <div>
-            <Label>Home country</Label>
+            <Label>{t("onb.about.country")}</Label>
             <Input value={homeCountry} onChange={(e) => setHomeCountry(e.target.value)} placeholder="Brazil" className="mt-1.5" />
           </div>
           <div>
-            <Label>University</Label>
+            <Label>{t("onb.about.university")}</Label>
             <Input value={university} onChange={(e) => setUniversity(e.target.value)} placeholder="State University" className="mt-1.5" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Year</Label>
+              <Label>{t("onb.about.year")}</Label>
               <Select value={year} onValueChange={setYear}>
-                <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select" /></SelectTrigger>
+                <SelectTrigger className="mt-1.5"><SelectValue placeholder={t("onb.about.year.select")} /></SelectTrigger>
                 <SelectContent>
                   {["Freshman","Sophomore","Junior","Senior","Graduate"].map((y) => (
-                    <SelectItem key={y} value={y}>{y}</SelectItem>
+                    <SelectItem key={y} value={y}>{t(`year.${y}`)}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Major</Label>
+              <Label>{t("onb.about.major")}</Label>
               <Input value={major} onChange={(e) => setMajor(e.target.value)} placeholder="CS" className="mt-1.5" />
             </div>
           </div>
           <div>
-            <Label>Languages spoken</Label>
+            <Label>{t("onb.about.languages")}</Label>
             <Input value={languages} onChange={(e) => setLanguages(e.target.value)} placeholder="English, Portuguese, Spanish" className="mt-1.5" />
-            <p className="mt-1 text-xs text-muted-foreground">Comma-separated</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("onb.about.languagesHint")}</p>
           </div>
         </div>
       ),
       valid: homeCountry.length > 0 && university.length > 0,
     },
     {
-      title: "What are you into?",
+      title: t("onb.interests.title"),
       content: (
         <div>
-          <p className="mb-3 text-sm text-muted-foreground">Pick all that apply.</p>
+          <p className="mb-3 text-sm text-muted-foreground">{t("onb.interests.subtitle")}</p>
           <div className="flex flex-wrap gap-2">
             {INTERESTS.map((i) => (
               <button
@@ -164,19 +166,19 @@ function Onboarding() {
       valid: interests.length > 0,
     },
     {
-      title: "A few prompts",
+      title: t("onb.prompts.title"),
       content: (
         <div className="space-y-4">
           <div>
-            <Label>A fun fact about me…</Label>
+            <Label>{t("onb.prompts.fun")}</Label>
             <Textarea value={funFact} onChange={(e) => setFunFact(e.target.value)} className="mt-1.5" rows={2} />
           </div>
           <div>
-            <Label>Best advice I ever got…</Label>
+            <Label>{t("onb.prompts.advice")}</Label>
             <Textarea value={advice} onChange={(e) => setAdvice(e.target.value)} className="mt-1.5" rows={2} />
           </div>
           <div>
-            <Label>{role === "mentor" ? "Mentees I'd love to meet…" : "I'm looking for a mentor who…"}</Label>
+            <Label>{role === "mentor" ? t("onb.prompts.lookingMentees") : t("onb.prompts.lookingMentor")}</Label>
             <Textarea value={lookingFor} onChange={(e) => setLookingFor(e.target.value)} className="mt-1.5" rows={2} />
           </div>
         </div>
@@ -200,16 +202,16 @@ function Onboarding() {
         <div className="mt-10 flex gap-3">
           {step > 0 && (
             <Button variant="outline" onClick={() => setStep(step - 1)} className="flex-1">
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              <ArrowLeft className="mr-2 h-4 w-4" /> {t("common.back")}
             </Button>
           )}
           {step < steps.length - 1 ? (
             <Button onClick={() => setStep(step + 1)} disabled={!cur.valid} className="flex-1">
-              Next <ArrowRight className="ml-2 h-4 w-4" />
+              {t("common.next")} <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           ) : (
             <Button onClick={finish} disabled={saving} className="flex-1">
-              {saving ? "Saving…" : "Finish"}
+              {saving ? t("common.saving") : t("common.finish")}
             </Button>
           )}
         </div>

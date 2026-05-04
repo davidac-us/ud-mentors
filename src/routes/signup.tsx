@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useT } from "@/lib/i18n";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 
@@ -27,6 +28,7 @@ const schema = z.object({
 
 function SignupPage() {
   const navigate = useNavigate();
+  const { t } = useT();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -53,7 +55,7 @@ function SignupPage() {
       toast.error(error.message);
       return;
     }
-    toast.success("Account created! Let's set up your profile.");
+    toast.success(t("signup.success"));
     navigate({ to: "/onboarding" });
   };
 
@@ -61,36 +63,36 @@ function SignupPage() {
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-md px-6 pt-6">
         <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Back
+          <ArrowLeft className="h-4 w-4" /> {t("common.back")}
         </Link>
       </div>
       <div className="mx-auto max-w-md px-6 pt-6">
-        <h1 className="text-3xl font-bold">Create your account</h1>
+        <h1 className="text-3xl font-bold">{t("signup.title")}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Sign up with your university email to get started.
+          {t("signup.subtitle")}
         </p>
         <form onSubmit={submit} className="mt-8 space-y-4">
           <div>
-            <Label htmlFor="name">Full name</Label>
+            <Label htmlFor="name">{t("signup.fullName")}</Label>
             <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1.5" placeholder="Maya Chen" />
           </div>
           <div>
-            <Label htmlFor="email">University email</Label>
+            <Label htmlFor="email">{t("signup.email")}</Label>
             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5" placeholder="you@university.edu" />
-            <p className="mt-1 text-xs text-muted-foreground">Must end in .edu</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t("signup.emailHint")}</p>
           </div>
           <div>
-            <Label htmlFor="pw">Password</Label>
-            <Input id="pw" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1.5" placeholder="At least 8 characters" />
+            <Label htmlFor="pw">{t("signup.password")}</Label>
+            <Input id="pw" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1.5" placeholder={t("signup.passwordPh")} />
           </div>
           <Button type="submit" disabled={loading} size="lg" className="w-full">
-            {loading ? "Creating account…" : "Create account"}
+            {loading ? t("signup.creating") : t("signup.create")}
           </Button>
         </form>
         <p className="mt-6 text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
+          {t("signup.haveAccount")}{" "}
           <Link to="/login" className="font-medium text-primary hover:underline">
-            Log in
+            {t("signup.login")}
           </Link>
         </p>
       </div>
