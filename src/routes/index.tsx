@@ -2,17 +2,29 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import udLogo from "@/assets/ud-logo.png";
+import udLogo from "@/assets/delaware-blue-hens.png";
 
 export const Route = createFileRoute("/")({
   component: Landing,
 });
 
-const FLAGS = [
-  "🇧🇷", "🇨🇳", "🇲🇽", "🇮🇳", "🇫🇷", "🇰🇷", "🇳🇬", "🇪🇬",
-  "🇯🇵", "🇪🇸", "🇩🇪", "🇮🇹", "🇹🇷", "🇻🇳", "🇨🇴", "🇿🇦",
-  "🇸🇦", "🇨🇦", "🇬🇧", "🇦🇷", "🇹🇭", "🇵🇭", "🇰🇪", "🇵🇰",
+const FLAG_CODES = [
+  "br", "cn", "mx", "in", "fr", "kr", "ng", "eg",
+  "jp", "es", "de", "it", "tr", "vn", "co", "za",
+  "sa", "ca", "gb", "ar", "th", "ph", "ke", "pk",
 ];
+
+function Flag({ code, className = "" }: { code: string; className?: string }) {
+  return (
+    <img
+      src={`https://flagcdn.com/w80/${code}.png`}
+      srcSet={`https://flagcdn.com/w160/${code}.png 2x`}
+      alt={code}
+      loading="lazy"
+      className={`inline-block rounded-sm shadow-sm ${className}`}
+    />
+  );
+}
 
 function Landing() {
   const { user, profile, loading } = useAuth();
@@ -32,21 +44,22 @@ function Landing() {
   return (
     <div className="min-h-screen bg-[oklch(0.98_0.02_85)]">
       <div className="mx-auto max-w-md px-6 pb-10 pt-10">
-        {/* Flag grid background */}
         <div className="relative overflow-hidden rounded-3xl bg-card p-6 shadow-[var(--shadow-card)]">
-          <div className="grid grid-cols-6 gap-2 text-3xl opacity-70">
-            {FLAGS.map((f, i) => (
-              <span key={i} className="text-center" style={{ transform: `rotate(${(i % 5) - 2}deg)` }}>{f}</span>
+          <div className="grid grid-cols-6 gap-2 opacity-80">
+            {FLAG_CODES.map((c, i) => (
+              <Flag
+                key={i}
+                code={c}
+                className="h-6 w-9 object-cover"
+              />
             ))}
           </div>
 
           <div className="mt-4 flex justify-center">
             <img
               src={udLogo}
-              alt="University of Delaware"
-              width={160}
-              height={160}
-              className="h-36 w-36 object-contain drop-shadow-md"
+              alt="Delaware Blue Hens"
+              className="h-28 w-auto object-contain drop-shadow-md"
             />
           </div>
 
@@ -69,8 +82,10 @@ function Landing() {
           </div>
         </div>
 
-        <div className="mt-6 flex flex-wrap justify-center gap-1 text-2xl">
-          {FLAGS.slice(0, 16).map((f, i) => <span key={i}>{f}</span>)}
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          {FLAG_CODES.slice(0, 16).map((c, i) => (
+            <Flag key={i} code={c} className="h-5 w-8 object-cover" />
+          ))}
         </div>
         <p className="mt-3 text-center text-xs text-muted-foreground">
           Made with ❤️ for international students at the University of Delaware
