@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useT, type Lang } from "@/lib/i18n";
 import udLogo from "@/assets/ud-monogram.png";
 
 export const Route = createFileRoute("/welcome")({
@@ -17,15 +18,16 @@ const LANGUAGES = [
 
 function Welcome() {
   const navigate = useNavigate();
+  const { t, setLang } = useT();
   const [phase, setPhase] = useState<"loading" | "language">("loading");
 
   useEffect(() => {
-    const t = setTimeout(() => setPhase("language"), 1800);
-    return () => clearTimeout(t);
+    const t2 = setTimeout(() => setPhase("language"), 1800);
+    return () => clearTimeout(t2);
   }, []);
 
   const pick = (code: string) => {
-    try { localStorage.setItem("mm_lang", code); } catch {}
+    setLang(code as Lang);
     navigate({ to: "/" });
   };
 
@@ -53,8 +55,8 @@ function Welcome() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 py-10">
       <img src={udLogo} alt="University of Delaware" width={96} height={96} className="h-24 w-24 object-contain" />
-      <h1 className="mt-6 text-2xl font-bold">Choose your language</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Escolha o seu idioma · 选择语言 · اختر لغتك</p>
+      <h1 className="mt-6 text-2xl font-bold">{t("welcome.choose")}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">{t("welcome.subtitle")}</p>
       <div className="mt-8 grid w-full max-w-sm grid-cols-1 gap-3">
         {LANGUAGES.map((l) => (
           <button
