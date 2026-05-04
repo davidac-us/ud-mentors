@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useAuth } from "@/lib/auth";
+import { useT } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import udLogo from "@/assets/delaware-blue-hens.png";
 
@@ -28,6 +29,7 @@ function Flag({ code, className = "" }: { code: string; className?: string }) {
 
 function Landing() {
   const { user, profile, loading } = useAuth();
+  const { t } = useT();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -64,20 +66,20 @@ function Landing() {
           </div>
 
           <h1 className="mt-4 text-center text-4xl font-extrabold leading-tight tracking-tight">
-            Hey there! 👋
+            {t("landing.hi")}
             <br />
-            <span style={{ color: "var(--primary)" }}>Find your people</span> at UD.
+            <span style={{ color: "var(--primary)" }}>{t("landing.findPeople")}</span> {t("landing.atUD")}
           </h1>
           <p className="mt-3 text-center text-base text-muted-foreground">
-            A friendly app to match first-year international Blue Hens with mentors who've been there. 🌍✨
+            {t("landing.tagline")}
           </p>
 
           <div className="mt-6 flex flex-col gap-3">
             <Button asChild size="lg" className="h-12 rounded-full text-base">
-              <Link to="/signup">Let's go 🚀</Link>
+              <Link to="/signup">{t("landing.cta")}</Link>
             </Button>
             <Button asChild size="lg" variant="ghost" className="h-12 rounded-full text-base">
-              <Link to="/login">I already have an account</Link>
+              <Link to="/login">{t("landing.haveAccount")}</Link>
             </Button>
           </div>
         </div>
@@ -88,7 +90,7 @@ function Landing() {
           ))}
         </div>
         <p className="mt-3 text-center text-xs text-muted-foreground">
-          Made with ❤️ for international students at the University of Delaware
+          {t("landing.madeWith")}
         </p>
       </div>
     </div>
