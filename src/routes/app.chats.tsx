@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { MessageCircle } from "lucide-react";
+import { useT } from "@/lib/i18n";
 import { Header, EmptyState, Avatar, Loader } from "./app.discover";
 
 export const Route = createFileRoute("/app/chats")({
@@ -19,6 +20,7 @@ type Row = {
 
 function ChatsList() {
   const { user } = useAuth();
+  const { t } = useT();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -52,12 +54,12 @@ function ChatsList() {
 
   return (
     <div className="px-5 pb-6 pt-6">
-      <Header title="Chats" subtitle="Your matched conversations" />
+      <Header title={t("chats.title")} subtitle={t("chats.subtitle")} />
       {rows.length === 0 ? (
         <EmptyState
           icon={<MessageCircle className="h-8 w-8" />}
-          title="No chats yet"
-          desc="Once you match with a mentor, the conversation will appear here."
+          title={t("chats.empty.title")}
+          desc={t("chats.empty.desc")}
         />
       ) : (
         <div className="space-y-2">
@@ -73,7 +75,7 @@ function ChatsList() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{r.other.full_name}</p>
                   <p className="text-xs text-muted-foreground">
-                    {r.other.role === "mentor" ? "Mentor" : "Mentee"}
+                    {r.other.role === "mentor" ? t("chats.mentor") : t("chats.mentee")}
                   </p>
                 </div>
               </Link>

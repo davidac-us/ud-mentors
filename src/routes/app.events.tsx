@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Calendar, MapPin, Plus } from "lucide-react";
 import { Header, EmptyState, Loader } from "./app.discover";
+import { useT } from "@/lib/i18n";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/app/events")({
@@ -27,6 +28,7 @@ type EventRow = {
 
 function Events() {
   const { user } = useAuth();
+  const { t } = useT();
   const [filter, setFilter] = useState<"event" | "club">("event");
   const [items, setItems] = useState<EventRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +59,7 @@ function Events() {
       created_by: user.id,
     });
     if (error) { toast.error(error.message); return; }
-    toast.success(`${kind === "event" ? "Event" : "Club"} posted!`);
+    toast.success(kind === "event" ? t("events.postedEvent") : t("events.postedClub"));
     setOpen(false);
     setTitle(""); setDesc(""); setLoc(""); setDate(""); setKind("event");
     load();
@@ -70,40 +72,40 @@ function Events() {
   return (
     <div className="px-5 pb-6 pt-6">
       <div className="flex items-start justify-between">
-        <Header title="Events" subtitle="Campus events & international clubs" />
+        <Header title={t("events.title")} subtitle={t("events.subtitle")} />
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="sm"><Plus className="mr-1 h-4 w-4" /> Post</Button>
+            <Button size="sm"><Plus className="mr-1 h-4 w-4" /> {t("common.post")}</Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Post something</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>{t("events.post")}</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div className="flex gap-2">
-                <Button type="button" variant={kind === "event" ? "default" : "outline"} onClick={() => setKind("event")} className="flex-1">Event</Button>
-                <Button type="button" variant={kind === "club" ? "default" : "outline"} onClick={() => setKind("club")} className="flex-1">Club</Button>
+                <Button type="button" variant={kind === "event" ? "default" : "outline"} onClick={() => setKind("event")} className="flex-1">{t("events.event")}</Button>
+                <Button type="button" variant={kind === "club" ? "default" : "outline"} onClick={() => setKind("club")} className="flex-1">{t("events.club")}</Button>
               </div>
-              <div><Label>Title</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} className="mt-1.5" /></div>
-              <div><Label>Description</Label><Textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} maxLength={1000} className="mt-1.5" /></div>
-              <div><Label>Location</Label><Input value={loc} onChange={(e) => setLoc(e.target.value)} maxLength={120} className="mt-1.5" /></div>
+              <div><Label>{t("events.field.title")}</Label><Input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} className="mt-1.5" /></div>
+              <div><Label>{t("events.field.desc")}</Label><Textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={3} maxLength={1000} className="mt-1.5" /></div>
+              <div><Label>{t("events.field.location")}</Label><Input value={loc} onChange={(e) => setLoc(e.target.value)} maxLength={120} className="mt-1.5" /></div>
               {kind === "event" && (
-                <div><Label>Date & time</Label><Input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1.5" /></div>
+                <div><Label>{t("events.field.datetime")}</Label><Input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} className="mt-1.5" /></div>
               )}
-              <Button onClick={create} disabled={!title.trim()} className="w-full">Publish</Button>
+              <Button onClick={create} disabled={!title.trim()} className="w-full">{t("common.publish")}</Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
       <div className="mb-4 inline-flex rounded-full bg-muted p-1">
-        <button onClick={() => setFilter("event")} className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${filter === "event" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>Events</button>
-        <button onClick={() => setFilter("club")} className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${filter === "club" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>Clubs</button>
+        <button onClick={() => setFilter("event")} className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${filter === "event" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>{t("events.tab.events")}</button>
+        <button onClick={() => setFilter("club")} className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${filter === "club" ? "bg-card shadow-sm" : "text-muted-foreground"}`}>{t("events.tab.clubs")}</button>
       </div>
 
       {filtered.length === 0 ? (
         <EmptyState
           icon={<Calendar className="h-8 w-8" />}
-          title={`No ${filter === "event" ? "events" : "clubs"} yet`}
-          desc="Be the first to post one!"
+          title={filter === "event" ? t("events.empty.events") : t("events.empty.clubs")}
+          desc={t("events.empty.desc")}
         />
       ) : (
         <div className="space-y-3">

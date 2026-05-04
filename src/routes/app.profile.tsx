@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Header, Avatar, Loader } from "./app.discover";
+import { useT } from "@/lib/i18n";
 import { toast } from "sonner";
 import { LogOut } from "lucide-react";
 
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/app/profile")({
 
 function ProfilePage() {
   const { profile, user, refreshProfile, signOut } = useAuth();
+  const { t } = useT();
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
 
@@ -58,7 +60,7 @@ function ProfilePage() {
     }).eq("id", user.id);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Profile updated");
+    toast.success(t("profile.updated"));
     refreshProfile();
   };
 
