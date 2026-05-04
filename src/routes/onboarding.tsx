@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { GraduationCap, UserCog, ArrowLeft, ArrowRight } from "lucide-react";
 
@@ -114,7 +115,14 @@ function Onboarding() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Year</Label>
-              <Input value={year} onChange={(e) => setYear(e.target.value)} placeholder="Sophomore" className="mt-1.5" />
+              <Select value={year} onValueChange={setYear}>
+                <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select" /></SelectTrigger>
+                <SelectContent>
+                  {["Freshman","Sophomore","Junior","Senior","Graduate"].map((y) => (
+                    <SelectItem key={y} value={y}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Major</Label>
