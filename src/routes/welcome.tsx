@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import udLogo from "@/assets/ud-logo.png";
+import udLogo from "@/assets/ud-monogram.png";
 
 export const Route = createFileRoute("/welcome")({
   component: Welcome,
