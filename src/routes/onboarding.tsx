@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useT } from "@/lib/i18n";
 import { toast } from "sonner";
-import { GraduationCap, UserCog, ArrowLeft, ArrowRight } from "lucide-react";
+import { GraduationCap, UserCog, ArrowLeft, ArrowRight, Sparkles, Check } from "lucide-react";
 
 export const Route = createFileRoute("/onboarding")({
   component: Onboarding,
@@ -21,6 +21,18 @@ const INTERESTS = [
   "Volunteering", "Anime", "Board Games", "Fashion", "Politics",
 ];
 
+const LANGUAGE_OPTIONS = ["English", "Spanish", "Portuguese", "Chinese", "Arabic", "French"];
+
+// Map language name -> global thread id (matches migration)
+const LANG_THREAD_IDS: Record<string, string> = {
+  English: "00000000-0000-0000-0000-0000000000a1",
+  Spanish: "00000000-0000-0000-0000-0000000000a2",
+  Portuguese: "00000000-0000-0000-0000-0000000000a3",
+  Chinese: "00000000-0000-0000-0000-0000000000a4",
+  Arabic: "00000000-0000-0000-0000-0000000000a5",
+  French: "00000000-0000-0000-0000-0000000000a6",
+};
+
 function Onboarding() {
   const { user, profile, loading, refreshProfile } = useAuth();
   const { t } = useT();
@@ -30,10 +42,11 @@ function Onboarding() {
 
   const [role, setRole] = useState<"first_year" | "mentor">("first_year");
   const [homeCountry, setHomeCountry] = useState("");
-  const [university, setUniversity] = useState("");
+  const university = "University of Delaware";
   const [year, setYear] = useState("");
   const [major, setMajor] = useState("");
-  const [languages, setLanguages] = useState("");
+  const [selectedLangs, setSelectedLangs] = useState<string[]>([]);
+  const [otherLang, setOtherLang] = useState("");
   const [interests, setInterests] = useState<string[]>([]);
   const [funFact, setFunFact] = useState("");
   const [advice, setAdvice] = useState("");
@@ -47,16 +60,22 @@ function Onboarding() {
   const toggleInterest = (i: string) =>
     setInterests((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
 
+  const toggleLang = (l: string) =>
+    setSelectedLangs((prev) => (prev.includes(l) ? prev.filter((x) => x !== l) : [...prev, l]));
+
   const finish = async () => {
     if (!user) return;
     setSaving(true);
+    const allLangs = [...selectedLangs];
+    if (otherLang.trim()) allLangs.push(otherLang.trim());
+
     const { error } = await supabase.from("profiles").update({
       role,
       home_country: homeCountry,
       university,
       academic_year: year,
       major,
-      languages: languages.split(",").map((l) => l.trim()).filter(Boolean),
+      languages: allLangs,
       interests,
       prompt_fun_fact: funFact,
       prompt_advice: advice,
@@ -70,8 +89,16 @@ function Onboarding() {
       return;
     }
 
-    // Insert role into user_roles
     await supabase.from("user_roles").upsert({ user_id: user.id, role }, { onConflict: "user_id,role" });
+
+    // Auto-join language-based group chats
+    const memberships = selectedLangs
+      .map((l) => LANG_THREAD_IDS[l])
+      .filter(Boolean)
+      .map((thread_id) => ({ thread_id, user_id: user.id }));
+    if (memberships.length) {
+      await supabase.from("thread_members").upsert(memberships, { onConflict: "thread_id,user_id" });
+    }
 
     await refreshProfile();
     setSaving(false);
@@ -79,25 +106,15 @@ function Onboarding() {
     navigate({ to: "/app/discover" });
   };
 
-  const steps = [
+  const steps: Array<{ title: string; content: React.ReactNode; valid: boolean; hideBack?: boolean }> = [
     {
       title: t("onb.role.title"),
       content: (
         <div className="space-y-3">
-          <RoleCard
-            active={role === "first_year"}
-            onClick={() => setRole("first_year")}
-            icon={<GraduationCap className="h-6 w-6" />}
-            title={t("onb.role.firstYear")}
-            desc={t("onb.role.firstYearDesc")}
-          />
-          <RoleCard
-            active={role === "mentor"}
-            onClick={() => setRole("mentor")}
-            icon={<UserCog className="h-6 w-6" />}
-            title={t("onb.role.mentor")}
-            desc={t("onb.role.mentorDesc")}
-          />
+          <RoleCard active={role === "first_year"} onClick={() => setRole("first_year")}
+            icon={<GraduationCap className="h-6 w-6" />} title={t("onb.role.firstYear")} desc={t("onb.role.firstYearDesc")} />
+          <RoleCard active={role === "mentor"} onClick={() => setRole("mentor")}
+            icon={<UserCog className="h-6 w-6" />} title={t("onb.role.mentor")} desc={t("onb.role.mentorDesc")} />
         </div>
       ),
       valid: true,
@@ -112,7 +129,7 @@ function Onboarding() {
           </div>
           <div>
             <Label>{t("onb.about.university")}</Label>
-            <Input value={university} onChange={(e) => setUniversity(e.target.value)} placeholder="State University" className="mt-1.5" />
+            <Input value={university} disabled readOnly className="mt-1.5 bg-muted" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -133,12 +150,38 @@ function Onboarding() {
           </div>
           <div>
             <Label>{t("onb.about.languages")}</Label>
-            <Input value={languages} onChange={(e) => setLanguages(e.target.value)} placeholder="English, Portuguese, Spanish" className="mt-1.5" />
-            <p className="mt-1 text-xs text-muted-foreground">{t("onb.about.languagesHint")}</p>
+            <div className="mt-1.5 flex flex-wrap gap-2">
+              {LANGUAGE_OPTIONS.map((l) => {
+                const on = selectedLangs.includes(l);
+                return (
+                  <button key={l} type="button" onClick={() => toggleLang(l)}
+                    className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm transition ${
+                      on ? "border-transparent bg-primary text-primary-foreground" : "border-border bg-card hover:border-primary/40"
+                    }`}>
+                    {on && <Check className="h-3.5 w-3.5" />} {l}
+                  </button>
+                );
+              })}
+            </div>
+            <Input value={otherLang} onChange={(e) => setOtherLang(e.target.value)}
+              placeholder={t("onb.about.languagesOther")} className="mt-2" />
           </div>
         </div>
       ),
-      valid: homeCountry.length > 0 && university.length > 0,
+      valid: homeCountry.length > 0 && (selectedLangs.length > 0 || otherLang.trim().length > 0),
+    },
+    {
+      title: t("onb.build.title"),
+      content: (
+        <div className="flex flex-col items-center py-8 text-center">
+          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Sparkles className="h-12 w-12" />
+          </div>
+          <h2 className="mt-6 text-3xl font-bold">{t("onb.build.heading")}</h2>
+          <p className="mt-3 max-w-xs text-muted-foreground">{t("onb.build.subtitle")}</p>
+        </div>
+      ),
+      valid: true,
     },
     {
       title: t("onb.interests.title"),
@@ -147,16 +190,10 @@ function Onboarding() {
           <p className="mb-3 text-sm text-muted-foreground">{t("onb.interests.subtitle")}</p>
           <div className="flex flex-wrap gap-2">
             {INTERESTS.map((i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => toggleInterest(i)}
+              <button key={i} type="button" onClick={() => toggleInterest(i)}
                 className={`rounded-full border px-3.5 py-1.5 text-sm transition ${
-                  interests.includes(i)
-                    ? "border-transparent bg-primary text-primary-foreground"
-                    : "border-border bg-card hover:border-primary/40"
-                }`}
-              >
+                  interests.includes(i) ? "border-transparent bg-primary text-primary-foreground" : "border-border bg-card hover:border-primary/40"
+                }`}>
                 {i}
               </button>
             ))}
@@ -166,21 +203,31 @@ function Onboarding() {
       valid: interests.length > 0,
     },
     {
-      title: t("onb.prompts.title"),
+      title: t("onb.prompts.fun"),
       content: (
-        <div className="space-y-4">
-          <div>
-            <Label>{t("onb.prompts.fun")}</Label>
-            <Textarea value={funFact} onChange={(e) => setFunFact(e.target.value)} className="mt-1.5" rows={2} />
-          </div>
-          <div>
-            <Label>{t("onb.prompts.advice")}</Label>
-            <Textarea value={advice} onChange={(e) => setAdvice(e.target.value)} className="mt-1.5" rows={2} />
-          </div>
-          <div>
-            <Label>{role === "mentor" ? t("onb.prompts.lookingMentees") : t("onb.prompts.lookingMentor")}</Label>
-            <Textarea value={lookingFor} onChange={(e) => setLookingFor(e.target.value)} className="mt-1.5" rows={2} />
-          </div>
+        <div>
+          <p className="mb-3 text-sm text-muted-foreground">{t("onb.prompts.funHint")}</p>
+          <Textarea value={funFact} onChange={(e) => setFunFact(e.target.value)} rows={4} placeholder="I once…" />
+        </div>
+      ),
+      valid: true,
+    },
+    {
+      title: t("onb.prompts.advice"),
+      content: (
+        <div>
+          <p className="mb-3 text-sm text-muted-foreground">{t("onb.prompts.adviceHint")}</p>
+          <Textarea value={advice} onChange={(e) => setAdvice(e.target.value)} rows={4} placeholder="The best advice…" />
+        </div>
+      ),
+      valid: true,
+    },
+    {
+      title: role === "mentor" ? t("onb.prompts.lookingMentees") : t("onb.prompts.lookingMentor"),
+      content: (
+        <div>
+          <p className="mb-3 text-sm text-muted-foreground">{t("onb.prompts.lookingHint")}</p>
+          <Textarea value={lookingFor} onChange={(e) => setLookingFor(e.target.value)} rows={4} />
         </div>
       ),
       valid: true,
@@ -224,13 +271,10 @@ function RoleCard({
   active, onClick, icon, title, desc,
 }: { active: boolean; onClick: () => void; icon: React.ReactNode; title: string; desc: string }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <button type="button" onClick={onClick}
       className={`flex w-full items-start gap-4 rounded-2xl border-2 p-4 text-left transition ${
         active ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"
-      }`}
-    >
+      }`}>
       <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">{icon}</div>
       <div>
         <h3 className="font-semibold">{title}</h3>
