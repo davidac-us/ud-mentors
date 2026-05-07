@@ -26,7 +26,7 @@ export const Route = createFileRoute("/app/community")({
 const GLOBAL_ID = "00000000-0000-0000-0000-000000000001";
 
 function Community() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { t } = useT();
   const [groups, setGroups] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(true);
