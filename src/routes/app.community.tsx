@@ -105,7 +105,7 @@ function Community() {
       </Link>
 
       {(() => {
-        const userLangs = (profile?.languages ?? []).map((l) => l.toLowerCase());
+        const userLangs = (profile?.languages ?? []).map((l: string) => l.toLowerCase());
         const myLangChats = LANG_THREADS.filter((lt) => userLangs.includes(lt.name.toLowerCase()));
         if (myLangChats.length === 0) return null;
         return (
