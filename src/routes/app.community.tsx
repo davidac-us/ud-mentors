@@ -5,7 +5,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Globe, Plus, Users } from "lucide-react";
+import { Globe, Languages, Plus, Users } from "lucide-react";
+
+const LANG_THREADS: Array<{ id: string; name: string; flag: string }> = [
+  { id: "00000000-0000-0000-0000-0000000000a1", name: "English", flag: "🇬🇧" },
+  { id: "00000000-0000-0000-0000-0000000000a2", name: "Spanish", flag: "🇪🇸" },
+  { id: "00000000-0000-0000-0000-0000000000a3", name: "Portuguese", flag: "🇵🇹" },
+  { id: "00000000-0000-0000-0000-0000000000a4", name: "Chinese", flag: "🇨🇳" },
+  { id: "00000000-0000-0000-0000-0000000000a5", name: "Arabic", flag: "🇸🇦" },
+  { id: "00000000-0000-0000-0000-0000000000a6", name: "French", flag: "🇫🇷" },
+];
 import { Header, Avatar, Loader } from "./app.discover";
 import { useT } from "@/lib/i18n";
 import { toast } from "sonner";
@@ -17,7 +26,7 @@ export const Route = createFileRoute("/app/community")({
 const GLOBAL_ID = "00000000-0000-0000-0000-000000000001";
 
 function Community() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { t } = useT();
   const [groups, setGroups] = useState<Array<{ id: string; name: string }>>([]);
   const [loading, setLoading] = useState(true);
@@ -94,6 +103,34 @@ function Community() {
           <p className="text-sm text-white/80">{t("community.globalDesc")}</p>
         </div>
       </Link>
+
+      {(() => {
+        const userLangs = (profile?.languages ?? []).map((l: string) => l.toLowerCase());
+        const myLangChats = LANG_THREADS.filter((lt) => userLangs.includes(lt.name.toLowerCase()));
+        if (myLangChats.length === 0) return null;
+        return (
+          <div className="mb-4">
+            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Languages className="h-4 w-4" /> {t("community.langChats")}
+            </div>
+            <div className="space-y-2">
+              {myLangChats.map((lt) => (
+                <Link
+                  key={lt.id}
+                  to="/app/thread/$threadId"
+                  params={{ threadId: lt.id }}
+                  className="flex items-center gap-3 rounded-2xl bg-card p-3.5 shadow-[var(--shadow-soft)] transition hover:scale-[1.01]"
+                >
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-2xl">
+                    {lt.flag}
+                  </div>
+                  <p className="font-semibold">{lt.name} Chat</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="mb-3 mt-6 flex items-center justify-between">
         <h2 className="font-semibold">{t("community.groups")}</h2>

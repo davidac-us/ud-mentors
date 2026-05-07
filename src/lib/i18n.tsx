@@ -168,6 +168,14 @@ const en: Dict = {
   "profile.lookingMentor": "Looking for a mentor who…",
   "profile.lookingMentees": "Mentees I'd love to meet",
   "profile.updated": "Profile updated",
+  "onb.about.languagesOther": "Other (type here)",
+  "onb.build.title": "Build your profile",
+  "onb.build.heading": "Build your profile",
+  "onb.build.subtitle": "Now the fun part — let's add some personality so people can get to know you.",
+  "onb.prompts.funHint": "Share something quirky or memorable about yourself.",
+  "onb.prompts.adviceHint": "A piece of wisdom that stuck with you.",
+  "onb.prompts.lookingHint": "Tell us what kind of connection you hope to make.",
+  "community.langChats": "Language chats",
 };
 
 const es: Dict = {
@@ -311,6 +319,14 @@ const es: Dict = {
   "profile.lookingMentor": "Busco un mentor que…",
   "profile.lookingMentees": "Aprendices que me encantaría conocer",
   "profile.updated": "Perfil actualizado",
+  "onb.about.languagesOther": "Otro (escribe aquí)",
+  "onb.build.title": "Crea tu perfil",
+  "onb.build.heading": "Crea tu perfil",
+  "onb.build.subtitle": "Ahora la parte divertida: agreguemos algo de personalidad para que te conozcan.",
+  "onb.prompts.funHint": "Comparte algo curioso o memorable sobre ti.",
+  "onb.prompts.adviceHint": "Un consejo que se te quedó grabado.",
+  "onb.prompts.lookingHint": "Cuéntanos qué tipo de conexión esperas hacer.",
+  "community.langChats": "Chats por idioma",
 };
 
 const pt: Dict = {
@@ -454,6 +470,14 @@ const pt: Dict = {
   "profile.lookingMentor": "Procuro um mentor que…",
   "profile.lookingMentees": "Mentorados que adoraria conhecer",
   "profile.updated": "Perfil atualizado",
+  "onb.about.languagesOther": "Outro (digite aqui)",
+  "onb.build.title": "Crie seu perfil",
+  "onb.build.heading": "Crie seu perfil",
+  "onb.build.subtitle": "Agora a parte divertida — vamos adicionar personalidade para que te conheçam.",
+  "onb.prompts.funHint": "Compartilhe algo curioso ou marcante sobre você.",
+  "onb.prompts.adviceHint": "Um conselho que ficou com você.",
+  "onb.prompts.lookingHint": "Conte que tipo de conexão você espera.",
+  "community.langChats": "Chats por idioma",
 };
 
 const zh: Dict = {
@@ -596,6 +620,14 @@ const zh: Dict = {
   "profile.lookingMentor": "我想找一位这样的导师…",
   "profile.lookingMentees": "想认识的学弟学妹",
   "profile.updated": "资料已更新",
+  "onb.about.languagesOther": "其他（在此输入）",
+  "onb.build.title": "创建你的档案",
+  "onb.build.heading": "创建你的档案",
+  "onb.build.subtitle": "现在到有趣的部分——加点个性，让大家认识你。",
+  "onb.prompts.funHint": "分享一个有趣或难忘的事。",
+  "onb.prompts.adviceHint": "一段让你印象深刻的建议。",
+  "onb.prompts.lookingHint": "告诉我们你希望建立怎样的联系。",
+  "community.langChats": "语言聊天",
 };
 
 const ar: Dict = {
@@ -738,6 +770,14 @@ const ar: Dict = {
   "profile.lookingMentor": "أبحث عن مرشد…",
   "profile.lookingMentees": "طلاب أتمنى لقاءهم",
   "profile.updated": "تم تحديث الملف",
+  "onb.about.languagesOther": "أخرى (اكتب هنا)",
+  "onb.build.title": "أنشئ ملفك",
+  "onb.build.heading": "أنشئ ملفك",
+  "onb.build.subtitle": "الآن الجزء الممتع — لنضف بعض الشخصية ليتعرف عليك الآخرون.",
+  "onb.prompts.funHint": "شارك شيئًا مميزًا أو لا يُنسى عنك.",
+  "onb.prompts.adviceHint": "نصيحة بقيت معك.",
+  "onb.prompts.lookingHint": "أخبرنا بنوع التواصل الذي تتمناه.",
+  "community.langChats": "دردشات اللغات",
 };
 
 const fr: Dict = {
@@ -881,6 +921,14 @@ const fr: Dict = {
   "profile.lookingMentor": "Je cherche un mentor qui…",
   "profile.lookingMentees": "Mentorés à rencontrer",
   "profile.updated": "Profil mis à jour",
+  "onb.about.languagesOther": "Autre (tapez ici)",
+  "onb.build.title": "Crée ton profil",
+  "onb.build.heading": "Crée ton profil",
+  "onb.build.subtitle": "Maintenant la partie fun — ajoutons un peu de personnalité pour qu'on te connaisse.",
+  "onb.prompts.funHint": "Partage quelque chose de curieux ou mémorable sur toi.",
+  "onb.prompts.adviceHint": "Un conseil qui t'est resté.",
+  "onb.prompts.lookingHint": "Dis-nous quel genre de connexion tu espères.",
+  "community.langChats": "Chats par langue",
 };
 
 const DICTS: Record<Lang, Dict> = { en, es, pt, zh, ar, fr };
