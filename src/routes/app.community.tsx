@@ -5,7 +5,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Globe, Plus, Users } from "lucide-react";
+import { Globe, Languages, Plus, Users } from "lucide-react";
+
+const LANG_THREADS: Array<{ id: string; name: string; flag: string }> = [
+  { id: "00000000-0000-0000-0000-0000000000a1", name: "English", flag: "🇬🇧" },
+  { id: "00000000-0000-0000-0000-0000000000a2", name: "Spanish", flag: "🇪🇸" },
+  { id: "00000000-0000-0000-0000-0000000000a3", name: "Portuguese", flag: "🇵🇹" },
+  { id: "00000000-0000-0000-0000-0000000000a4", name: "Chinese", flag: "🇨🇳" },
+  { id: "00000000-0000-0000-0000-0000000000a5", name: "Arabic", flag: "🇸🇦" },
+  { id: "00000000-0000-0000-0000-0000000000a6", name: "French", flag: "🇫🇷" },
+];
 import { Header, Avatar, Loader } from "./app.discover";
 import { useT } from "@/lib/i18n";
 import { toast } from "sonner";
