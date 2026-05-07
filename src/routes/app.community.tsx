@@ -104,6 +104,34 @@ function Community() {
         </div>
       </Link>
 
+      {(() => {
+        const userLangs = (profile?.languages ?? []).map((l) => l.toLowerCase());
+        const myLangChats = LANG_THREADS.filter((lt) => userLangs.includes(lt.name.toLowerCase()));
+        if (myLangChats.length === 0) return null;
+        return (
+          <div className="mb-4">
+            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+              <Languages className="h-4 w-4" /> {t("community.langChats")}
+            </div>
+            <div className="space-y-2">
+              {myLangChats.map((lt) => (
+                <Link
+                  key={lt.id}
+                  to="/app/thread/$threadId"
+                  params={{ threadId: lt.id }}
+                  className="flex items-center gap-3 rounded-2xl bg-card p-3.5 shadow-[var(--shadow-soft)] transition hover:scale-[1.01]"
+                >
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-secondary text-2xl">
+                    {lt.flag}
+                  </div>
+                  <p className="font-semibold">{lt.name} Chat</p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="mb-3 mt-6 flex items-center justify-between">
         <h2 className="font-semibold">{t("community.groups")}</h2>
         <Dialog open={open} onOpenChange={setOpen}>
