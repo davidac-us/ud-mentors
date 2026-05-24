@@ -33,23 +33,8 @@ function LoginPage() {
       return
     }
 
-    // Check onboarded status to decide where to go
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('onboarded')
-        .eq('user_id', session.user.id)
-        .single()
-
-      if (profile?.onboarded) {
-        navigate({ to: '/app/discover' })
-      } else {
-        navigate({ to: '/onboarding' })
-      }
-    }
-
-    setSubmitting(false)
+    // app.tsx auth guard handles the onboarding redirect if needed
+    navigate({ to: '/app/discover' })
   }
 
   return (
