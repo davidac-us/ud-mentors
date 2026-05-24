@@ -22,19 +22,24 @@ function LoginPage() {
     if (!email.trim() || !password) return
     setSubmitting(true)
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim().toLowerCase(),
-      password,
-    })
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
+      })
 
-    if (error) {
-      toast.error(error.message)
+      if (error) {
+        toast.error(error.message)
+        return
+      }
+
+      // app.tsx auth guard handles the onboarding redirect if needed
+      navigate({ to: '/app/discover' })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+    } finally {
       setSubmitting(false)
-      return
     }
-
-    // app.tsx auth guard handles the onboarding redirect if needed
-    navigate({ to: '/app/discover' })
   }
 
   return (

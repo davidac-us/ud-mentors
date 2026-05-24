@@ -38,29 +38,34 @@ function SignupPage() {
 
     setSubmitting(true)
 
-    const { data, error } = await supabase.auth.signUp({
-      email: email.trim().toLowerCase(),
-      password,
-      options: {
-        data: { full_name: fullName.trim() },
-      },
-    })
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim().toLowerCase(),
+        password,
+        options: {
+          data: { full_name: fullName.trim() },
+        },
+      })
 
-    if (error) {
-      toast.error(error.message)
+      if (error) {
+        toast.error(error.message)
+        return
+      }
+
+      if (!data.session) {
+        // Email confirmation required — Supabase sent a confirmation email
+        toast.success('Check your email to confirm your account, then sign in.')
+        navigate({ to: '/login' })
+        return
+      }
+
+      // Session returned immediately — go straight to onboarding
+      navigate({ to: '/onboarding' })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
+    } finally {
       setSubmitting(false)
-      return
     }
-
-    if (!data.session) {
-      // Email confirmation required
-      toast.success('Check your email to confirm your account, then come back to sign in.')
-      navigate({ to: '/login' })
-      return
-    }
-
-    // Session returned — go straight to onboarding
-    navigate({ to: '/onboarding' })
   }
 
   return (

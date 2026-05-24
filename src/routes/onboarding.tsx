@@ -96,60 +96,59 @@ function OnboardingPage() {
     if (!user || !form.role) return
     setSaving(true)
 
-    const { data: myProfile, error: pErr } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('user_id', user.id)
-      .single()
+    try {
+      // Upsert the profile — creates it if the trigger didn't fire, updates it if it exists
+      const { data: myProfile, error: upsertErr } = await supabase
+        .from('profiles')
+        .upsert(
+          {
+            user_id: user.id,
+            name: profile?.name || user.email?.split('@')[0] || '',
+            role: form.role,
+            country: form.country.trim() || null,
+            university: 'University of Delaware',
+            year: form.year || null,
+            major: form.major.trim() || null,
+            fun_fact: form.fun_fact.trim() || null,
+            best_advice: form.best_advice.trim() || null,
+            mentor_prompt: form.role === 'mentee' ? form.mentor_prompt.trim() || null : null,
+            mentee_prompt: form.role === 'mentor' ? form.mentee_prompt.trim() || null : null,
+            mentee_cap: form.role === 'mentor' ? form.mentee_cap : null,
+            onboarded: true,
+          },
+          { onConflict: 'user_id' },
+        )
+        .select('id')
+        .single()
 
-    if (pErr || !myProfile) {
-      toast.error('Profile not found. Please try signing in again.')
+      if (upsertErr || !myProfile) {
+        toast.error(upsertErr?.message ?? 'Failed to save profile. Please try again.')
+        return
+      }
+
+      // Replace languages
+      await supabase.from('profile_languages').delete().eq('profile_id', myProfile.id)
+      if (form.languages.length > 0) {
+        await supabase.from('profile_languages').insert(
+          form.languages.map((language) => ({ profile_id: myProfile.id, language })),
+        )
+      }
+
+      // Replace interests
+      await supabase.from('profile_interests').delete().eq('profile_id', myProfile.id)
+      if (form.interests.length > 0) {
+        await supabase.from('profile_interests').insert(
+          form.interests.map((interest) => ({ profile_id: myProfile.id, interest })),
+        )
+      }
+
+      markOnboarded()
+      navigate({ to: '/app/discover' })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Something went wrong.')
+    } finally {
       setSaving(false)
-      return
     }
-
-    const { error: updateErr } = await supabase
-      .from('profiles')
-      .update({
-        role: form.role,
-        country: form.country.trim(),
-        university: 'University of Delaware',
-        year: form.year,
-        major: form.major.trim(),
-        fun_fact: form.fun_fact.trim() || null,
-        best_advice: form.best_advice.trim() || null,
-        mentor_prompt: form.role === 'mentee' ? form.mentor_prompt.trim() || null : null,
-        mentee_prompt: form.role === 'mentor' ? form.mentee_prompt.trim() || null : null,
-        mentee_cap: form.role === 'mentor' ? form.mentee_cap : null,
-        onboarded: true,
-      })
-      .eq('user_id', user.id)
-
-    if (updateErr) {
-      toast.error(updateErr.message)
-      setSaving(false)
-      return
-    }
-
-    // Replace languages
-    await supabase.from('profile_languages').delete().eq('profile_id', myProfile.id)
-    if (form.languages.length > 0) {
-      await supabase.from('profile_languages').insert(
-        form.languages.map((language) => ({ profile_id: myProfile.id, language })),
-      )
-    }
-
-    // Replace interests
-    await supabase.from('profile_interests').delete().eq('profile_id', myProfile.id)
-    if (form.interests.length > 0) {
-      await supabase.from('profile_interests').insert(
-        form.interests.map((interest) => ({ profile_id: myProfile.id, interest })),
-      )
-    }
-
-    markOnboarded()
-    setSaving(false)
-    navigate({ to: '/app/discover' })
   }
 
   const TOTAL_STEPS = 7

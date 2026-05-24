@@ -3,15 +3,21 @@
 -- Run this in the Supabase SQL editor.
 -- ============================================================
 
--- Drop old tables (Lovable-generated) ---------------------------
-DROP TABLE IF EXISTS public.thread_members CASCADE;
+-- Drop everything (old Lovable tables + any previously created new tables)
+DROP TABLE IF EXISTS public.community_room_members CASCADE;
+DROP TABLE IF EXISTS public.community_messages CASCADE;
+DROP TABLE IF EXISTS public.community_rooms CASCADE;
+DROP TABLE IF EXISTS public.events CASCADE;
 DROP TABLE IF EXISTS public.messages CASCADE;
+DROP TABLE IF EXISTS public.matches CASCADE;
+DROP TABLE IF EXISTS public.profile_interests CASCADE;
+DROP TABLE IF EXISTS public.profile_languages CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
+DROP TABLE IF EXISTS public.thread_members CASCADE;
 DROP TABLE IF EXISTS public.threads CASCADE;
 DROP TABLE IF EXISTS public.match_requests CASCADE;
 DROP TABLE IF EXISTS public.swipes CASCADE;
 DROP TABLE IF EXISTS public.user_roles CASCADE;
-DROP TABLE IF EXISTS public.events CASCADE;
-DROP TABLE IF EXISTS public.profiles CASCADE;
 
 -- Drop old types
 DROP TYPE IF EXISTS public.app_role CASCADE;
