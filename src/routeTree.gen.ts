@@ -9,24 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppProfileRouteImport } from './routes/app.profile'
 import { Route as AppEventsRouteImport } from './routes/app.events'
 import { Route as AppDiscoverRouteImport } from './routes/app.discover'
 import { Route as AppCommunityRouteImport } from './routes/app.community'
 import { Route as AppChatsRouteImport } from './routes/app.chats'
-import { Route as AppThreadThreadIdRouteImport } from './routes/app.thread.$threadId'
 
-const WelcomeRoute = WelcomeRouteImport.update({
-  id: '/welcome',
-  path: '/welcome',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
@@ -51,6 +45,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppProfileRoute = AppProfileRouteImport.update({
   id: '/profile',
@@ -77,11 +76,6 @@ const AppChatsRoute = AppChatsRouteImport.update({
   path: '/chats',
   getParentRoute: () => AppRoute,
 } as any)
-const AppThreadThreadIdRoute = AppThreadThreadIdRouteImport.update({
-  id: '/thread/$threadId',
-  path: '/thread/$threadId',
-  getParentRoute: () => AppRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -89,27 +83,24 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
-  '/welcome': typeof WelcomeRoute
   '/app/chats': typeof AppChatsRoute
   '/app/community': typeof AppCommunityRoute
   '/app/discover': typeof AppDiscoverRoute
   '/app/events': typeof AppEventsRoute
   '/app/profile': typeof AppProfileRoute
-  '/app/thread/$threadId': typeof AppThreadThreadIdRoute
+  '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
-  '/welcome': typeof WelcomeRoute
   '/app/chats': typeof AppChatsRoute
   '/app/community': typeof AppCommunityRoute
   '/app/discover': typeof AppDiscoverRoute
   '/app/events': typeof AppEventsRoute
   '/app/profile': typeof AppProfileRoute
-  '/app/thread/$threadId': typeof AppThreadThreadIdRoute
+  '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -118,13 +109,12 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/onboarding': typeof OnboardingRoute
   '/signup': typeof SignupRoute
-  '/welcome': typeof WelcomeRoute
   '/app/chats': typeof AppChatsRoute
   '/app/community': typeof AppCommunityRoute
   '/app/discover': typeof AppDiscoverRoute
   '/app/events': typeof AppEventsRoute
   '/app/profile': typeof AppProfileRoute
-  '/app/thread/$threadId': typeof AppThreadThreadIdRoute
+  '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -134,27 +124,24 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/signup'
-    | '/welcome'
     | '/app/chats'
     | '/app/community'
     | '/app/discover'
     | '/app/events'
     | '/app/profile'
-    | '/app/thread/$threadId'
+    | '/app/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/app'
     | '/login'
     | '/onboarding'
     | '/signup'
-    | '/welcome'
     | '/app/chats'
     | '/app/community'
     | '/app/discover'
     | '/app/events'
     | '/app/profile'
-    | '/app/thread/$threadId'
+    | '/app'
   id:
     | '__root__'
     | '/'
@@ -162,13 +149,12 @@ export interface FileRouteTypes {
     | '/login'
     | '/onboarding'
     | '/signup'
-    | '/welcome'
     | '/app/chats'
     | '/app/community'
     | '/app/discover'
     | '/app/events'
     | '/app/profile'
-    | '/app/thread/$threadId'
+    | '/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -177,18 +163,10 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   OnboardingRoute: typeof OnboardingRoute
   SignupRoute: typeof SignupRoute
-  WelcomeRoute: typeof WelcomeRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/welcome': {
-      id: '/welcome'
-      path: '/welcome'
-      fullPath: '/welcome'
-      preLoaderRoute: typeof WelcomeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/signup': {
       id: '/signup'
       path: '/signup'
@@ -223,6 +201,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
     }
     '/app/profile': {
       id: '/app/profile'
@@ -259,13 +244,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppChatsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/thread/$threadId': {
-      id: '/app/thread/$threadId'
-      path: '/thread/$threadId'
-      fullPath: '/app/thread/$threadId'
-      preLoaderRoute: typeof AppThreadThreadIdRouteImport
-      parentRoute: typeof AppRoute
-    }
   }
 }
 
@@ -275,7 +253,7 @@ interface AppRouteChildren {
   AppDiscoverRoute: typeof AppDiscoverRoute
   AppEventsRoute: typeof AppEventsRoute
   AppProfileRoute: typeof AppProfileRoute
-  AppThreadThreadIdRoute: typeof AppThreadThreadIdRoute
+  AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -284,7 +262,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDiscoverRoute: AppDiscoverRoute,
   AppEventsRoute: AppEventsRoute,
   AppProfileRoute: AppProfileRoute,
-  AppThreadThreadIdRoute: AppThreadThreadIdRoute,
+  AppIndexRoute: AppIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
@@ -295,8 +273,16 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   OnboardingRoute: OnboardingRoute,
   SignupRoute: SignupRoute,
-  WelcomeRoute: WelcomeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

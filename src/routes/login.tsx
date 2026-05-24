@@ -1,66 +1,115 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useT } from "@/lib/i18n";
-import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
+import { supabase } from '@/integrations/supabase/client'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { toast } from 'sonner'
+import { ArrowLeft } from 'lucide-react'
 
-export const Route = createFileRoute("/login")({
+export const Route = createFileRoute('/login')({
   component: LoginPage,
-});
+})
 
 function LoginPage() {
-  const navigate = useNavigate();
-  const { t } = useT();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate()
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
   const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    setLoading(false);
+    e.preventDefault()
+    if (!email.trim() || !password) return
+    setSubmitting(true)
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
+      password,
+    })
+
     if (error) {
-      toast.error(error.message);
-      return;
+      toast.error(error.message)
+      setSubmitting(false)
+      return
     }
-    navigate({ to: "/" });
-  };
+
+    // Check onboarded status to decide where to go
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('onboarded')
+        .eq('user_id', session.user.id)
+        .single()
+
+      if (profile?.onboarded) {
+        navigate({ to: '/app/discover' })
+      } else {
+        navigate({ to: '/onboarding' })
+      }
+    }
+
+    setSubmitting(false)
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-md px-6 pt-6">
-        <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> {t("common.back")}
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="mx-auto w-full max-w-[480px] px-6 pt-6">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back
         </Link>
       </div>
-      <div className="mx-auto max-w-md px-6 pt-6">
-        <h1 className="text-3xl font-bold">{t("login.title")}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{t("login.subtitle")}</p>
-        <form onSubmit={submit} className="mt-8 space-y-4">
-          <div>
-            <Label htmlFor="email">{t("login.email")}</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5" />
+
+      <div className="mx-auto w-full max-w-[480px] px-6 pt-8 flex-1">
+        <h1 className="text-3xl font-bold text-foreground">Welcome back</h1>
+        <p className="mt-2 text-sm text-muted-foreground">Sign in to your UD Mentors account.</p>
+
+        <form onSubmit={submit} className="mt-8 space-y-5">
+          <div className="space-y-1.5">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@udel.edu"
+              autoComplete="email"
+              required
+            />
           </div>
-          <div>
-            <Label htmlFor="pw">{t("login.password")}</Label>
-            <Input id="pw" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1.5" />
+
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              autoComplete="current-password"
+              required
+            />
           </div>
-          <Button type="submit" disabled={loading} size="lg" className="w-full">
-            {loading ? t("login.submitting") : t("login.submit")}
+
+          <Button
+            type="submit"
+            disabled={submitting}
+            className="w-full rounded-full h-12 text-base"
+          >
+            {submitting ? 'Signing in...' : 'Sign in'}
           </Button>
         </form>
+
         <p className="mt-6 text-center text-sm text-muted-foreground">
-          {t("login.new")}{" "}
-          <Link to="/signup" className="font-medium text-primary hover:underline">
-            {t("login.create")}
+          New here?{' '}
+          <Link to="/signup" className="font-semibold text-primary hover:underline">
+            Create an account
           </Link>
         </p>
       </div>
     </div>
-  );
+  )
 }

@@ -1,101 +1,141 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { z } from "zod";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useT } from "@/lib/i18n";
-import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { useState } from 'react'
+import { supabase } from '@/integrations/supabase/client'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { toast } from 'sonner'
+import { ArrowLeft } from 'lucide-react'
 
-export const Route = createFileRoute("/signup")({
+export const Route = createFileRoute('/signup')({
   component: SignupPage,
-});
-
-const schema = z.object({
-  email: z
-    .string()
-    .trim()
-    .email("Enter a valid email")
-    .max(255)
-    .refine((e) => /\.edu(\.[a-z]{2,3})?$/i.test(e), {
-      message: "Must be a university (.edu) email",
-    }),
-  password: z.string().min(8, "Password must be at least 8 characters").max(72),
-  fullName: z.string().trim().min(1, "Required").max(80),
-});
+})
 
 function SignupPage() {
-  const navigate = useNavigate();
-  const { t } = useT();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate()
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const isEduEmail = (e: string) => /\.edu(\.[a-z]{2,4})?$/i.test(e.trim())
 
   const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const parsed = schema.safeParse({ email, password, fullName });
-    if (!parsed.success) {
-      toast.error(parsed.error.issues[0].message);
-      return;
+    e.preventDefault()
+
+    if (!fullName.trim()) {
+      toast.error('Please enter your full name.')
+      return
     }
-    setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email: parsed.data.email,
-      password: parsed.data.password,
+    if (!isEduEmail(email)) {
+      toast.error('Please use your university email (.edu).')
+      return
+    }
+    if (password.length < 8) {
+      toast.error('Password must be at least 8 characters.')
+      return
+    }
+
+    setSubmitting(true)
+
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim().toLowerCase(),
+      password,
       options: {
-        emailRedirectTo: `${window.location.origin}/`,
-        data: { full_name: parsed.data.fullName },
+        data: { full_name: fullName.trim() },
       },
-    });
-    setLoading(false);
+    })
+
     if (error) {
-      toast.error(error.message);
-      return;
+      toast.error(error.message)
+      setSubmitting(false)
+      return
     }
-    toast.success(t("signup.success"));
-    navigate({ to: "/onboarding" });
-  };
+
+    if (!data.session) {
+      // Email confirmation required
+      toast.success('Check your email to confirm your account, then come back to sign in.')
+      navigate({ to: '/login' })
+      return
+    }
+
+    // Session returned — go straight to onboarding
+    navigate({ to: '/onboarding' })
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-md px-6 pt-6">
-        <Link to="/" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> {t("common.back")}
+    <div className="min-h-screen bg-background flex flex-col">
+      <div className="mx-auto w-full max-w-[480px] px-6 pt-6">
+        <Link
+          to="/"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back
         </Link>
       </div>
-      <div className="mx-auto max-w-md px-6 pt-6">
-        <h1 className="text-3xl font-bold">{t("signup.title")}</h1>
+
+      <div className="mx-auto w-full max-w-[480px] px-6 pt-8 flex-1">
+        <h1 className="text-3xl font-bold text-foreground">Create your account</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          {t("signup.subtitle")}
+          You&apos;ll need a university email to join.
         </p>
-        <form onSubmit={submit} className="mt-8 space-y-4">
-          <div>
-            <Label htmlFor="name">{t("signup.fullName")}</Label>
-            <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-1.5" placeholder="Maya Chen" />
+
+        <form onSubmit={submit} className="mt-8 space-y-5">
+          <div className="space-y-1.5">
+            <Label htmlFor="fullName">Full name</Label>
+            <Input
+              id="fullName"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Maya Chen"
+              autoComplete="name"
+              required
+            />
           </div>
-          <div>
-            <Label htmlFor="email">{t("signup.email")}</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5" placeholder="you@university.edu" />
-            <p className="mt-1 text-xs text-muted-foreground">{t("signup.emailHint")}</p>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="email">University email</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@udel.edu"
+              autoComplete="email"
+              required
+            />
+            <p className="text-xs text-muted-foreground">Must end in .edu</p>
           </div>
-          <div>
-            <Label htmlFor="pw">{t("signup.password")}</Label>
-            <Input id="pw" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1.5" placeholder={t("signup.passwordPh")} />
+
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Password</Label>
+            <Input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="At least 8 characters"
+              autoComplete="new-password"
+              required
+            />
           </div>
-          <Button type="submit" disabled={loading} size="lg" className="w-full">
-            {loading ? t("signup.creating") : t("signup.create")}
+
+          <Button
+            type="submit"
+            disabled={submitting}
+            className="w-full rounded-full h-12 text-base"
+          >
+            {submitting ? 'Creating account...' : 'Create account'}
           </Button>
         </form>
+
         <p className="mt-6 text-center text-sm text-muted-foreground">
-          {t("signup.haveAccount")}{" "}
-          <Link to="/login" className="font-medium text-primary hover:underline">
-            {t("signup.login")}
+          Already have an account?{' '}
+          <Link to="/login" className="font-semibold text-primary hover:underline">
+            Sign in
           </Link>
         </p>
       </div>
     </div>
-  );
+  )
 }

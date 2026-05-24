@@ -1,84 +1,221 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Heart, X, Sparkles, Check, MapPin, GraduationCap } from "lucide-react";
-import { useT } from "@/lib/i18n";
-import { toast } from "sonner";
+import { createFileRoute } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
+import { useAuth } from '@/lib/auth'
+import type { ProfileWithDetails } from '@/lib/auth'
+import { supabase } from '@/integrations/supabase/client'
+import { Button } from '@/components/ui/button'
+import { Heart, X, Sparkles, MapPin, GraduationCap, Check } from 'lucide-react'
+import { toast } from 'sonner'
 
-export const Route = createFileRoute("/app/discover")({
+export const Route = createFileRoute('/app/discover')({
   component: Discover,
-});
+})
 
-type Profile = {
-  id: string;
-  full_name: string;
-  home_country: string;
-  university: string;
-  academic_year: string;
-  major: string;
-  languages: string[];
-  interests: string[];
-  prompt_fun_fact: string;
-  prompt_advice: string;
-  prompt_looking_for: string;
-  photo_url: string;
-};
+// ─── Shared UI components (exported for other tabs to import) ─────────────────
 
-function Discover() {
-  const { profile } = useAuth();
-  if (profile?.role === "mentor") return <MentorRequests />;
-  return <MenteeSwipe />;
+export function Header({ title, subtitle }: { title: string; subtitle?: string }) {
+  return (
+    <div className="mb-6">
+      <h1 className="text-2xl font-bold tracking-tight text-foreground">{title}</h1>
+      {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
+    </div>
+  )
 }
 
-function MenteeSwipe() {
-  const { user } = useAuth();
-  const { t } = useT();
-  const [mentors, setMentors] = useState<Profile[]>([]);
-  const [idx, setIdx] = useState(0);
-  const [loading, setLoading] = useState(true);
+export function EmptyState({
+  icon,
+  title,
+  desc,
+}: {
+  icon: React.ReactNode
+  title: string
+  desc: string
+}) {
+  return (
+    <div className="flex flex-col items-center rounded-2xl bg-card p-10 text-center shadow-[var(--shadow-soft)]">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+        {icon}
+      </div>
+      <h3 className="mt-4 font-semibold text-foreground">{title}</h3>
+      <p className="mt-1 text-sm text-muted-foreground">{desc}</p>
+    </div>
+  )
+}
+
+export function Avatar({ name, size = 44 }: { name: string; size?: number }) {
+  const initials = name
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+  return (
+    <div
+      className="flex shrink-0 items-center justify-center rounded-full font-semibold text-primary-foreground"
+      style={{
+        width: size,
+        height: size,
+        background: 'var(--gradient-warm)',
+        fontSize: size * 0.38,
+      }}
+    >
+      {initials || '?'}
+    </div>
+  )
+}
+
+export function Loader() {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+    </div>
+  )
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+function Discover() {
+  const { profile } = useAuth()
+  if (!profile) return <Loader />
+  return profile.role === 'mentor' ? <MentorRequests /> : <MenteeDiscover />
+}
+
+// ─── Compatibility score ──────────────────────────────────────────────────────
+
+function compatScore(me: ProfileWithDetails, other: ProfileWithDetails): number {
+  let score = 0
+  if (me.major && me.major === other.major) score += 40
+  if (me.country && me.country === other.country) score += 30
+  for (const lang of me.languages) {
+    if (other.languages.includes(lang)) score += 20
+  }
+  for (const interest of me.interests) {
+    if (other.interests.includes(interest)) score += 10
+  }
+  return score
+}
+
+// ─── Mentee view: swipe through mentors ───────────────────────────────────────
+
+type DiscoverProfile = ProfileWithDetails & { score: number }
+
+function MenteeDiscover() {
+  const { profile } = useAuth()
+  const [cards, setCards] = useState<DiscoverProfile[]>([])
+  const [idx, setIdx] = useState(0)
+  const [loadingCards, setLoadingCards] = useState(true)
 
   useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const { data: swiped } = await supabase.from("swipes").select("target_id").eq("swiper_id", user.id);
-      const swipedIds = (swiped ?? []).map((s) => s.target_id);
-      let q = supabase
-        .from("profiles")
-        .select("*")
-        .eq("role", "mentor")
-        .eq("discoverable", true)
-        .eq("onboarded", true)
-        .neq("id", user.id);
-      if (swipedIds.length) q = q.not("id", "in", `(${swipedIds.join(",")})`);
-      const { data } = await q.limit(50);
-      setMentors((data as Profile[]) ?? []);
-      setLoading(false);
-    })();
-  }, [user]);
+    if (!profile) return
+    ;(async () => {
+      // IDs already in a match relationship (any status except expired)
+      const { data: existing } = await supabase
+        .from('matches')
+        .select('mentor_id, cooldown_until')
+        .eq('mentee_id', profile.id)
 
-  const swipe = async (liked: boolean) => {
-    if (!user) return;
-    const m = mentors[idx];
-    if (!m) return;
-    await supabase.from("swipes").insert({ swiper_id: user.id, target_id: m.id, liked });
-    if (liked) {
-      await supabase.from("match_requests").insert({ mentee_id: user.id, mentor_id: m.id });
-      toast.success(`${t("discover.requestSent")} ${m.full_name.split(" ")[0]}!`);
+      const now = new Date().toISOString()
+      const excludeIds = (existing ?? [])
+        .filter((m) => {
+          // Exclude if still in cooldown (declined) OR if pending/matched
+          if (m.cooldown_until && m.cooldown_until > now) return true
+          return true // exclude all existing matches from feed
+        })
+        .map((m) => m.mentor_id)
+
+      let query = supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', 'mentor')
+        .eq('onboarded', true)
+        .neq('id', profile.id)
+
+      // Apply exclusions
+      if (excludeIds.length > 0) {
+        query = query.not('id', 'in', `(${excludeIds.join(',')})`)
+      }
+
+      const { data: mentors } = await query.limit(100)
+
+      if (!mentors?.length) {
+        setCards([])
+        setLoadingCards(false)
+        return
+      }
+
+      // Fetch languages + interests for all mentors
+      const ids = mentors.map((m) => m.id)
+      const [{ data: langs }, { data: ints }] = await Promise.all([
+        supabase.from('profile_languages').select('profile_id, language').in('profile_id', ids),
+        supabase.from('profile_interests').select('profile_id, interest').in('profile_id', ids),
+      ])
+
+      const langMap: Record<string, string[]> = {}
+      for (const row of langs ?? []) {
+        ;(langMap[row.profile_id] ??= []).push(row.language)
+      }
+      const intMap: Record<string, string[]> = {}
+      for (const row of ints ?? []) {
+        ;(intMap[row.profile_id] ??= []).push(row.interest)
+      }
+
+      const enriched: DiscoverProfile[] = mentors.map((m) => {
+        const full: ProfileWithDetails = {
+          ...m,
+          languages: langMap[m.id] ?? [],
+          interests: intMap[m.id] ?? [],
+        }
+        return { ...full, score: compatScore(profile, full) }
+      })
+
+      // Sort by compatibility score (desc)
+      enriched.sort((a, b) => b.score - a.score)
+      setCards(enriched)
+      setLoadingCards(false)
+    })()
+  }, [profile?.id])
+
+  const skip = () => setIdx((i) => i + 1)
+
+  const sendRequest = async () => {
+    if (!profile) return
+    const mentor = cards[idx]
+    if (!mentor) return
+
+    // Check confirmed match limit (max 3)
+    const { count } = await supabase
+      .from('matches')
+      .select('*', { count: 'exact', head: true })
+      .eq('mentee_id', profile.id)
+      .eq('status', 'matched')
+
+    if ((count ?? 0) >= 3) {
+      toast.error("You've already reached 3 matched mentors.")
+      return
     }
-    setIdx((i) => i + 1);
-  };
 
-  if (loading) {
-    return <Loader />;
+    const { error } = await supabase.from('matches').insert({
+      mentee_id: profile.id,
+      mentor_id: mentor.id,
+      status: 'pending',
+    })
+
+    if (error) {
+      toast.error(error.message)
+      return
+    }
+
+    toast.success(`Match request sent to ${mentor.name.split(' ')[0]}!`)
+    setIdx((i) => i + 1)
   }
 
-  const current = mentors[idx];
+  if (loadingCards) return <Loader />
+
+  const current = cards[idx]
 
   return (
     <div className="px-5 pb-6 pt-6">
-      <Header title="Discover" subtitle="Swipe through mentors" />
+      <Header title="Discover" subtitle="Find your mentor" />
       {!current ? (
         <EmptyState
           icon={<Sparkles className="h-8 w-8" />}
@@ -87,18 +224,20 @@ function MenteeSwipe() {
         />
       ) : (
         <>
-          <MentorCard p={current} />
-          <div className="mt-6 flex items-center justify-center gap-6">
+          <MentorCard profile={current} />
+          <div className="mt-6 flex items-center justify-center gap-8">
             <button
-              onClick={() => swipe(false)}
+              onClick={skip}
               className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-border bg-card text-muted-foreground shadow-[var(--shadow-soft)] transition hover:scale-105 hover:border-destructive hover:text-destructive"
+              aria-label="Skip"
             >
               <X className="h-7 w-7" />
             </button>
             <button
-              onClick={() => swipe(true)}
+              onClick={sendRequest}
               className="flex h-20 w-20 items-center justify-center rounded-full text-primary-foreground shadow-[var(--shadow-card)] transition hover:scale-105"
-              style={{ background: "var(--gradient-warm)" }}
+              style={{ background: 'var(--gradient-warm)' }}
+              aria-label="Send match request"
             >
               <Heart className="h-9 w-9" fill="currentColor" />
             </button>
@@ -106,34 +245,33 @@ function MenteeSwipe() {
         </>
       )}
     </div>
-  );
+  )
 }
 
-function MentorCard({ p }: { p: Profile }) {
-  const { t } = useT();
-  const initials = p.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
-  const yearLabel = p.academic_year ? t(`year.${p.academic_year}`) : "";
+function MentorCard({ profile: p }: { profile: ProfileWithDetails }) {
   return (
     <div className="overflow-hidden rounded-3xl bg-card shadow-[var(--shadow-card)]">
       <div
-        className="flex h-56 items-center justify-center text-6xl font-bold text-primary-foreground"
-        style={{ background: "var(--gradient-warm)" }}
+        className="flex h-52 items-center justify-center text-6xl font-bold text-primary-foreground"
+        style={{ background: 'var(--gradient-warm)' }}
       >
-        {p.photo_url ? (
-          <img src={p.photo_url} alt={p.full_name} className="h-full w-full object-cover" />
-        ) : (
-          <span>{initials || "?"}</span>
-        )}
+        <Avatar name={p.name} size={96} />
       </div>
+
       <div className="space-y-4 p-5">
         <div>
-          <h2 className="text-2xl font-bold">{p.full_name}</h2>
-          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
-            {p.home_country && (
-              <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{p.home_country}</span>
+          <h2 className="text-2xl font-bold text-foreground">{p.name}</h2>
+          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
+            {p.country && (
+              <span className="inline-flex items-center gap-1">
+                <MapPin className="h-3.5 w-3.5" /> {p.country}
+              </span>
             )}
-            {p.academic_year && (
-              <span className="inline-flex items-center gap-1"><GraduationCap className="h-3.5 w-3.5" />{yearLabel}{p.major ? ` · ${p.major}` : ""}</span>
+            {(p.year || p.major) && (
+              <span className="inline-flex items-center gap-1">
+                <GraduationCap className="h-3.5 w-3.5" />
+                {[p.year, p.major].filter(Boolean).join(' · ')}
+              </span>
             )}
           </div>
         </div>
@@ -141,164 +279,164 @@ function MentorCard({ p }: { p: Profile }) {
         {p.interests.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {p.interests.slice(0, 8).map((i) => (
-              <span key={i} className="rounded-full bg-accent px-2.5 py-1 text-xs text-accent-foreground">{i}</span>
+              <span key={i} className="rounded-full bg-accent px-2.5 py-1 text-xs text-accent-foreground">
+                {i}
+              </span>
             ))}
           </div>
         )}
 
-        {p.prompt_fun_fact && (
-          <Prompt label={t("discover.funFact")} text={p.prompt_fun_fact} />
-        )}
-        {p.prompt_advice && (
-          <Prompt label={t("discover.bestAdvice")} text={p.prompt_advice} />
-        )}
-        {p.prompt_looking_for && (
-          <Prompt label={t("discover.menteesWant")} text={p.prompt_looking_for} />
-        )}
+        {p.fun_fact && <Prompt label="Fun fact" text={p.fun_fact} />}
+        {p.best_advice && <Prompt label="Best advice" text={p.best_advice} />}
+        {p.mentee_prompt && <Prompt label="Looking for mentees who" text={p.mentee_prompt} />}
+
         {p.languages.length > 0 && (
-          <p className="text-xs text-muted-foreground">{t("discover.speaks")} {p.languages.join(", ")}</p>
+          <p className="text-xs text-muted-foreground">Speaks: {p.languages.join(', ')}</p>
         )}
       </div>
     </div>
-  );
+  )
 }
 
 function Prompt({ label, text }: { label: string; text: string }) {
   return (
     <div className="rounded-2xl bg-muted/60 p-3.5">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm">{text}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1 text-sm text-foreground">{text}</p>
     </div>
-  );
+  )
+}
+
+// ─── Mentor view: pending match requests ──────────────────────────────────────
+
+type PendingRequest = {
+  id: string
+  mentee_id: string
+  mentee: ProfileWithDetails | null
 }
 
 function MentorRequests() {
-  const { user } = useAuth();
-  const { t } = useT();
-  const [requests, setRequests] = useState<Array<{ id: string; mentee_id: string; status: string; profile: Profile | null }>>([]);
-  const [loading, setLoading] = useState(true);
+  const { profile } = useAuth()
+  const [requests, setRequests] = useState<PendingRequest[]>([])
+  const [loadingReqs, setLoadingReqs] = useState(true)
 
   const load = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("match_requests")
-      .select("id, mentee_id, status")
-      .eq("mentor_id", user.id)
-      .eq("status", "pending")
-      .order("created_at", { ascending: false });
-    const ids = (data ?? []).map((r) => r.mentee_id);
-    let profiles: Profile[] = [];
-    if (ids.length) {
-      const { data: p } = await supabase.from("profiles").select("*").in("id", ids);
-      profiles = (p as Profile[]) ?? [];
+    if (!profile) return
+    const now = new Date().toISOString()
+
+    const { data: pending } = await supabase
+      .from('matches')
+      .select('id, mentee_id')
+      .eq('mentor_id', profile.id)
+      .eq('status', 'pending')
+      .gt('expires_at', now)
+      .order('created_at', { ascending: false })
+
+    if (!pending?.length) {
+      setRequests([])
+      setLoadingReqs(false)
+      return
     }
+
+    const menteeIds = pending.map((r) => r.mentee_id)
+    const [{ data: menteeProfiles }, { data: langs }, { data: ints }] = await Promise.all([
+      supabase.from('profiles').select('*').in('id', menteeIds),
+      supabase.from('profile_languages').select('profile_id, language').in('profile_id', menteeIds),
+      supabase.from('profile_interests').select('profile_id, interest').in('profile_id', menteeIds),
+    ])
+
+    const langMap: Record<string, string[]> = {}
+    for (const row of langs ?? []) (langMap[row.profile_id] ??= []).push(row.language)
+    const intMap: Record<string, string[]> = {}
+    for (const row of ints ?? []) (intMap[row.profile_id] ??= []).push(row.interest)
+
     setRequests(
-      (data ?? []).map((r) => ({ ...r, profile: profiles.find((pp) => pp.id === r.mentee_id) ?? null }))
-    );
-    setLoading(false);
-  };
+      pending.map((r) => {
+        const p = menteeProfiles?.find((m) => m.id === r.mentee_id)
+        return {
+          id: r.id,
+          mentee_id: r.mentee_id,
+          mentee: p
+            ? { ...p, languages: langMap[p.id] ?? [], interests: intMap[p.id] ?? [] }
+            : null,
+        }
+      }),
+    )
+    setLoadingReqs(false)
+  }
 
-  useEffect(() => { load(); }, [user]);
+  useEffect(() => { load() }, [profile?.id])
 
-  const respond = async (req: { id: string; mentee_id: string }, accept: boolean) => {
-    if (!user) return;
+  const respond = async (matchId: string, accept: boolean) => {
     if (accept) {
-      // Create thread & members
-      const { data: thread } = await supabase
-        .from("threads")
-        .insert({ kind: "match", created_by: user.id })
-        .select()
-        .single();
-      if (thread) {
-        await supabase.from("thread_members").insert([
-          { thread_id: thread.id, user_id: user.id },
-          { thread_id: thread.id, user_id: req.mentee_id },
-        ]);
-        await supabase.from("match_requests").update({ status: "accepted", thread_id: thread.id }).eq("id", req.id);
-      }
-      toast.success(t("requests.accepted"));
+      await supabase
+        .from('matches')
+        .update({ status: 'matched', responded_at: new Date().toISOString() })
+        .eq('id', matchId)
+      toast.success('Match accepted! You can now chat.')
     } else {
-      await supabase.from("match_requests").update({ status: "declined" }).eq("id", req.id);
+      await supabase
+        .from('matches')
+        .update({
+          status: 'declined',
+          responded_at: new Date().toISOString(),
+          cooldown_until: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        })
+        .eq('id', matchId)
+      toast('Request declined.')
     }
-    load();
-  };
+    load()
+  }
 
-  if (loading) return <Loader />;
+  if (loadingReqs) return <Loader />
 
   return (
     <div className="px-5 pb-6 pt-6">
-      <Header title={t("requests.title")} subtitle={t("requests.subtitle")} />
+      <Header title="Match Requests" subtitle="Mentees who want to connect with you" />
       {requests.length === 0 ? (
-        <EmptyState icon={<Heart className="h-8 w-8" />} title={t("requests.empty.title")} desc={t("requests.empty.desc")} />
+        <EmptyState
+          icon={<Heart className="h-8 w-8" />}
+          title="No pending requests"
+          desc="When a mentee sends you a request, it will appear here."
+        />
       ) : (
         <div className="space-y-4">
           {requests.map((r) =>
-            r.profile ? (
+            r.mentee ? (
               <div key={r.id} className="rounded-2xl bg-card p-4 shadow-[var(--shadow-soft)]">
                 <div className="flex items-center gap-3">
-                  <Avatar name={r.profile.full_name} />
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate font-semibold">{r.profile.full_name}</p>
+                  <Avatar name={r.mentee.name} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-foreground">{r.mentee.name}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {r.profile.home_country} · {r.profile.major || (r.profile.academic_year ? t(`year.${r.profile.academic_year}`) : "")}
+                      {[r.mentee.country, r.mentee.major].filter(Boolean).join(' · ')}
                     </p>
                   </div>
                 </div>
-                {r.profile.prompt_looking_for && (
-                  <p className="mt-3 rounded-xl bg-muted/60 p-3 text-sm">"{r.profile.prompt_looking_for}"</p>
+                {r.mentee.mentor_prompt && (
+                  <p className="mt-3 rounded-xl bg-muted/60 p-3 text-sm italic">
+                    &ldquo;{r.mentee.mentor_prompt}&rdquo;
+                  </p>
                 )}
                 <div className="mt-3 flex gap-2">
-                  <Button onClick={() => respond(r, false)} variant="outline" className="flex-1">
-                    <X className="mr-1 h-4 w-4" /> {t("common.decline")}
+                  <Button
+                    variant="outline"
+                    className="flex-1 rounded-full"
+                    onClick={() => respond(r.id, false)}
+                  >
+                    <X className="mr-1 h-4 w-4" /> Decline
                   </Button>
-                  <Button onClick={() => respond(r, true)} className="flex-1">
-                    <Check className="mr-1 h-4 w-4" /> {t("common.accept")}
+                  <Button className="flex-1 rounded-full" onClick={() => respond(r.id, true)}>
+                    <Check className="mr-1 h-4 w-4" /> Accept
                   </Button>
                 </div>
               </div>
-            ) : null
+            ) : null,
           )}
         </div>
       )}
     </div>
-  );
-}
-
-export function Header({ title, subtitle }: { title: string; subtitle?: string }) {
-  return (
-    <div className="mb-6">
-      <h1 className="text-3xl font-bold tracking-tight">{title}</h1>
-      {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
-    </div>
-  );
-}
-
-export function EmptyState({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
-  return (
-    <div className="flex flex-col items-center rounded-2xl bg-card p-10 text-center shadow-[var(--shadow-soft)]">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">{icon}</div>
-      <h3 className="mt-4 font-semibold">{title}</h3>
-      <p className="mt-1 text-sm text-muted-foreground">{desc}</p>
-    </div>
-  );
-}
-
-export function Avatar({ name, size = 44 }: { name: string; size?: number }) {
-  const initials = name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
-  return (
-    <div
-      className="flex shrink-0 items-center justify-center rounded-full font-semibold text-primary-foreground"
-      style={{ width: size, height: size, background: "var(--gradient-warm)", fontSize: size * 0.4 }}
-    >
-      {initials || "?"}
-    </div>
-  );
-}
-
-export function Loader() {
-  return (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-    </div>
-  );
+  )
 }

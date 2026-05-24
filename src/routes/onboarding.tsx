@@ -1,285 +1,479 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth";
-import { supabase } from "@/integrations/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useT } from "@/lib/i18n";
-import { toast } from "sonner";
-import { GraduationCap, UserCog, ArrowLeft, ArrowRight, Sparkles, Check } from "lucide-react";
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
+import { useAuth } from '@/lib/auth'
+import { supabase } from '@/integrations/supabase/client'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Slider } from '@/components/ui/slider'
+import { toast } from 'sonner'
+import { GraduationCap, UserCog, ArrowLeft, ArrowRight, Sparkles, Check } from 'lucide-react'
 
-export const Route = createFileRoute("/onboarding")({
-  component: Onboarding,
-});
+export const Route = createFileRoute('/onboarding')({
+  component: OnboardingPage,
+})
 
 const INTERESTS = [
-  "Cooking", "Hiking", "Gaming", "Music", "Sports", "Art", "Reading", "Movies",
-  "Travel", "Photography", "Coding", "Dance", "Languages", "Coffee", "Fitness",
-  "Volunteering", "Anime", "Board Games", "Fashion", "Politics",
-];
+  'Cooking', 'Hiking', 'Gaming', 'Music', 'Sports', 'Art',
+  'Reading', 'Movies', 'Travel', 'Photography', 'Coding', 'Dance',
+  'Languages', 'Coffee', 'Fitness', 'Volunteering', 'Anime',
+  'Board Games', 'Fashion', 'Politics',
+]
 
-const LANGUAGE_OPTIONS = ["English", "Spanish", "Portuguese", "Chinese", "Arabic", "French"];
+const PRESET_LANGUAGES = ['English', 'Spanish', 'Portuguese', 'Chinese', 'Arabic', 'French']
 
-// Map language name -> global thread id (matches migration)
-const LANG_THREAD_IDS: Record<string, string> = {
-  English: "00000000-0000-0000-0000-0000000000a1",
-  Spanish: "00000000-0000-0000-0000-0000000000a2",
-  Portuguese: "00000000-0000-0000-0000-0000000000a3",
-  Chinese: "00000000-0000-0000-0000-0000000000a4",
-  Arabic: "00000000-0000-0000-0000-0000000000a5",
-  French: "00000000-0000-0000-0000-0000000000a6",
-};
+const YEARS = ['1st Year', '2nd Year', '3rd Year', '4th Year', 'Graduate']
 
-function Onboarding() {
-  const { user, profile, loading, refreshProfile } = useAuth();
-  const { t } = useT();
-  const navigate = useNavigate();
-  const [step, setStep] = useState(0);
-  const [saving, setSaving] = useState(false);
+type FormData = {
+  role: 'mentee' | 'mentor' | null
+  country: string
+  year: string
+  major: string
+  languages: string[]
+  interests: string[]
+  fun_fact: string
+  best_advice: string
+  mentor_prompt: string
+  mentee_prompt: string
+  mentee_cap: number
+}
 
-  const [role, setRole] = useState<"first_year" | "mentor">("first_year");
-  const [homeCountry, setHomeCountry] = useState("");
-  const university = "University of Delaware";
-  const [year, setYear] = useState("");
-  const [major, setMajor] = useState("");
-  const [selectedLangs, setSelectedLangs] = useState<string[]>([]);
-  const [otherLang, setOtherLang] = useState("");
-  const [interests, setInterests] = useState<string[]>([]);
-  const [funFact, setFunFact] = useState("");
-  const [advice, setAdvice] = useState("");
-  const [lookingFor, setLookingFor] = useState("");
+function OnboardingPage() {
+  const { user, profile, loading, markOnboarded } = useAuth()
+  const navigate = useNavigate()
+  const [step, setStep] = useState(0)
+  const [saving, setSaving] = useState(false)
+  const [customLang, setCustomLang] = useState('')
+
+  const [form, setForm] = useState<FormData>({
+    role: null,
+    country: '',
+    year: '',
+    major: '',
+    languages: [],
+    interests: [],
+    fun_fact: '',
+    best_advice: '',
+    mentor_prompt: '',
+    mentee_prompt: '',
+    mentee_cap: 3,
+  })
 
   useEffect(() => {
-    if (!loading && !user) navigate({ to: "/login" });
-    if (profile?.onboarded) navigate({ to: "/app/discover" });
-  }, [user, profile, loading, navigate]);
+    if (!loading && !user) navigate({ to: '/login' })
+    if (!loading && profile?.onboarded) navigate({ to: '/app/discover' })
+  }, [user, profile, loading, navigate])
+
+  const set = <K extends keyof FormData>(key: K, value: FormData[K]) =>
+    setForm((prev) => ({ ...prev, [key]: value }))
+
+  const toggleLang = (lang: string) =>
+    set('languages', form.languages.includes(lang)
+      ? form.languages.filter((l) => l !== lang)
+      : [...form.languages, lang])
 
   const toggleInterest = (i: string) =>
-    setInterests((prev) => (prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i]));
+    set('interests', form.interests.includes(i)
+      ? form.interests.filter((x) => x !== i)
+      : [...form.interests, i])
 
-  const toggleLang = (l: string) =>
-    setSelectedLangs((prev) => (prev.includes(l) ? prev.filter((x) => x !== l) : [...prev, l]));
+  const addCustomLang = () => {
+    const l = customLang.trim()
+    if (!l || form.languages.includes(l)) return
+    set('languages', [...form.languages, l])
+    setCustomLang('')
+  }
 
   const finish = async () => {
-    if (!user) return;
-    setSaving(true);
-    const allLangs = [...selectedLangs];
-    if (otherLang.trim()) allLangs.push(otherLang.trim());
+    if (!user || !form.role) return
+    setSaving(true)
 
-    const { error } = await supabase.from("profiles").update({
-      role,
-      home_country: homeCountry,
-      university,
-      academic_year: year,
-      major,
-      languages: allLangs,
-      interests,
-      prompt_fun_fact: funFact,
-      prompt_advice: advice,
-      prompt_looking_for: lookingFor,
-      onboarded: true,
-    }).eq("id", user.id);
+    const { data: myProfile, error: pErr } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .single()
 
-    if (error) {
-      setSaving(false);
-      toast.error(error.message);
-      return;
+    if (pErr || !myProfile) {
+      toast.error('Profile not found. Please try signing in again.')
+      setSaving(false)
+      return
     }
 
-    await supabase.from("user_roles").upsert({ user_id: user.id, role }, { onConflict: "user_id,role" });
+    const { error: updateErr } = await supabase
+      .from('profiles')
+      .update({
+        role: form.role,
+        country: form.country.trim(),
+        university: 'University of Delaware',
+        year: form.year,
+        major: form.major.trim(),
+        fun_fact: form.fun_fact.trim() || null,
+        best_advice: form.best_advice.trim() || null,
+        mentor_prompt: form.role === 'mentee' ? form.mentor_prompt.trim() || null : null,
+        mentee_prompt: form.role === 'mentor' ? form.mentee_prompt.trim() || null : null,
+        mentee_cap: form.role === 'mentor' ? form.mentee_cap : null,
+        onboarded: true,
+      })
+      .eq('user_id', user.id)
 
-    // Auto-join language-based group chats
-    const memberships = selectedLangs
-      .map((l) => LANG_THREAD_IDS[l])
-      .filter(Boolean)
-      .map((thread_id) => ({ thread_id, user_id: user.id }));
-    if (memberships.length) {
-      await supabase.from("thread_members").upsert(memberships, { onConflict: "thread_id,user_id" });
+    if (updateErr) {
+      toast.error(updateErr.message)
+      setSaving(false)
+      return
     }
 
-    await refreshProfile();
-    setSaving(false);
-    toast.success(t("onb.done"));
-    navigate({ to: "/app/discover" });
-  };
+    // Replace languages
+    await supabase.from('profile_languages').delete().eq('profile_id', myProfile.id)
+    if (form.languages.length > 0) {
+      await supabase.from('profile_languages').insert(
+        form.languages.map((language) => ({ profile_id: myProfile.id, language })),
+      )
+    }
 
-  const steps: Array<{ title: string; content: React.ReactNode; valid: boolean; hideBack?: boolean }> = [
+    // Replace interests
+    await supabase.from('profile_interests').delete().eq('profile_id', myProfile.id)
+    if (form.interests.length > 0) {
+      await supabase.from('profile_interests').insert(
+        form.interests.map((interest) => ({ profile_id: myProfile.id, interest })),
+      )
+    }
+
+    markOnboarded()
+    setSaving(false)
+    navigate({ to: '/app/discover' })
+  }
+
+  const TOTAL_STEPS = 7
+
+  const steps = [
     {
-      title: t("onb.role.title"),
+      title: 'Who are you?',
+      valid: form.role !== null,
       content: (
         <div className="space-y-3">
-          <RoleCard active={role === "first_year"} onClick={() => setRole("first_year")}
-            icon={<GraduationCap className="h-6 w-6" />} title={t("onb.role.firstYear")} desc={t("onb.role.firstYearDesc")} />
-          <RoleCard active={role === "mentor"} onClick={() => setRole("mentor")}
-            icon={<UserCog className="h-6 w-6" />} title={t("onb.role.mentor")} desc={t("onb.role.mentorDesc")} />
+          <RoleCard
+            active={form.role === 'mentee'}
+            onClick={() => set('role', 'mentee')}
+            icon={<GraduationCap className="h-6 w-6" />}
+            title="First-year international student"
+            desc="I'm new to UD and looking for guidance."
+          />
+          <RoleCard
+            active={form.role === 'mentor'}
+            onClick={() => set('role', 'mentor')}
+            icon={<UserCog className="h-6 w-6" />}
+            title="Experienced student mentor"
+            desc="I've been here a while and want to help."
+          />
         </div>
       ),
-      valid: true,
     },
     {
-      title: t("onb.about.title"),
+      title: 'Tell us about you',
+      valid: form.country.trim().length > 0,
       content: (
         <div className="space-y-4">
-          <div>
-            <Label>{t("onb.about.country")}</Label>
-            <Input value={homeCountry} onChange={(e) => setHomeCountry(e.target.value)} placeholder="Brazil" className="mt-1.5" />
+          <div className="space-y-1.5">
+            <Label>Home country</Label>
+            <Input
+              value={form.country}
+              onChange={(e) => set('country', e.target.value)}
+              placeholder="Brazil"
+            />
           </div>
-          <div>
-            <Label>{t("onb.about.university")}</Label>
-            <Input value={university} disabled readOnly className="mt-1.5 bg-muted" />
+          <div className="space-y-1.5">
+            <Label>University</Label>
+            <Input value="University of Delaware" readOnly className="bg-muted" />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>{t("onb.about.year")}</Label>
-              <Select value={year} onValueChange={setYear}>
-                <SelectTrigger className="mt-1.5"><SelectValue placeholder={t("onb.about.year.select")} /></SelectTrigger>
+            <div className="space-y-1.5">
+              <Label>Year</Label>
+              <Select value={form.year} onValueChange={(v) => set('year', v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select..." />
+                </SelectTrigger>
                 <SelectContent>
-                  {["Freshman","Sophomore","Junior","Senior","Graduate"].map((y) => (
-                    <SelectItem key={y} value={y}>{t(`year.${y}`)}</SelectItem>
+                  {YEARS.map((y) => (
+                    <SelectItem key={y} value={y}>{y}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>{t("onb.about.major")}</Label>
-              <Input value={major} onChange={(e) => setMajor(e.target.value)} placeholder="CS" className="mt-1.5" />
+            <div className="space-y-1.5">
+              <Label>Major</Label>
+              <Input
+                value={form.major}
+                onChange={(e) => set('major', e.target.value)}
+                placeholder="Computer Science"
+              />
             </div>
           </div>
-          <div>
-            <Label>{t("onb.about.languages")}</Label>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {LANGUAGE_OPTIONS.map((l) => {
-                const on = selectedLangs.includes(l);
+          <div className="space-y-2">
+            <Label>Languages spoken</Label>
+            <div className="flex flex-wrap gap-2">
+              {PRESET_LANGUAGES.map((lang) => {
+                const on = form.languages.includes(lang)
                 return (
-                  <button key={l} type="button" onClick={() => toggleLang(l)}
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => toggleLang(lang)}
                     className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm transition ${
-                      on ? "border-transparent bg-primary text-primary-foreground" : "border-border bg-card hover:border-primary/40"
-                    }`}>
-                    {on && <Check className="h-3.5 w-3.5" />} {l}
+                      on
+                        ? 'border-transparent bg-primary text-primary-foreground'
+                        : 'border-border bg-card hover:border-primary/40'
+                    }`}
+                  >
+                    {on && <Check className="h-3.5 w-3.5" />}
+                    {lang}
                   </button>
-                );
+                )
               })}
             </div>
-            <Input value={otherLang} onChange={(e) => setOtherLang(e.target.value)}
-              placeholder={t("onb.about.languagesOther")} className="mt-2" />
+            <div className="flex gap-2">
+              <Input
+                value={customLang}
+                onChange={(e) => setCustomLang(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomLang())}
+                placeholder="Add another language…"
+                className="flex-1"
+              />
+              <Button type="button" variant="outline" onClick={addCustomLang} disabled={!customLang.trim()}>
+                Add
+              </Button>
+            </div>
+            {form.languages.filter((l) => !PRESET_LANGUAGES.includes(l)).map((lang) => (
+              <span
+                key={lang}
+                className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-sm text-primary"
+              >
+                {lang}
+                <button type="button" onClick={() => toggleLang(lang)} className="ml-0.5 opacity-70 hover:opacity-100">
+                  ✕
+                </button>
+              </span>
+            ))}
           </div>
         </div>
       ),
-      valid: homeCountry.length > 0 && (selectedLangs.length > 0 || otherLang.trim().length > 0),
     },
     {
-      title: t("onb.build.title"),
+      title: '',
+      valid: true,
       content: (
-        <div className="flex flex-col items-center py-8 text-center">
+        <div className="flex flex-col items-center py-10 text-center">
           <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Sparkles className="h-12 w-12" />
           </div>
-          <h2 className="mt-6 text-3xl font-bold">{t("onb.build.heading")}</h2>
-          <p className="mt-3 max-w-xs text-muted-foreground">{t("onb.build.subtitle")}</p>
+          <h2 className="mt-6 text-3xl font-bold">Now, let&apos;s build your profile</h2>
+          <p className="mt-3 max-w-xs text-muted-foreground">
+            {form.role === 'mentor'
+              ? "Share what makes you a great mentor."
+              : "Share a bit so mentors can get to know you."}
+          </p>
         </div>
       ),
-      valid: true,
     },
     {
-      title: t("onb.interests.title"),
+      title: 'What are you into?',
+      valid: true,
       content: (
         <div>
-          <p className="mb-3 text-sm text-muted-foreground">{t("onb.interests.subtitle")}</p>
+          <p className="mb-4 text-sm text-muted-foreground">Pick as many as you like.</p>
           <div className="flex flex-wrap gap-2">
-            {INTERESTS.map((i) => (
-              <button key={i} type="button" onClick={() => toggleInterest(i)}
+            {INTERESTS.map((interest) => (
+              <button
+                key={interest}
+                type="button"
+                onClick={() => toggleInterest(interest)}
                 className={`rounded-full border px-3.5 py-1.5 text-sm transition ${
-                  interests.includes(i) ? "border-transparent bg-primary text-primary-foreground" : "border-border bg-card hover:border-primary/40"
-                }`}>
-                {i}
+                  form.interests.includes(interest)
+                    ? 'border-transparent bg-primary text-primary-foreground'
+                    : 'border-border bg-card hover:border-primary/40'
+                }`}
+              >
+                {interest}
               </button>
             ))}
           </div>
         </div>
       ),
-      valid: interests.length > 0,
     },
     {
-      title: t("onb.prompts.fun"),
-      content: (
-        <div>
-          <p className="mb-3 text-sm text-muted-foreground">{t("onb.prompts.funHint")}</p>
-          <Textarea value={funFact} onChange={(e) => setFunFact(e.target.value)} rows={4} placeholder="I once…" />
-        </div>
-      ),
+      title: 'A fun fact about me…',
       valid: true,
+      content: (
+        <Textarea
+          value={form.fun_fact}
+          onChange={(e) => set('fun_fact', e.target.value)}
+          rows={5}
+          placeholder="I once…"
+          className="resize-none"
+        />
+      ),
     },
     {
-      title: t("onb.prompts.advice"),
-      content: (
-        <div>
-          <p className="mb-3 text-sm text-muted-foreground">{t("onb.prompts.adviceHint")}</p>
-          <Textarea value={advice} onChange={(e) => setAdvice(e.target.value)} rows={4} placeholder="The best advice…" />
-        </div>
-      ),
+      title: 'Best advice I ever got…',
       valid: true,
-    },
-    {
-      title: role === "mentor" ? t("onb.prompts.lookingMentees") : t("onb.prompts.lookingMentor"),
       content: (
-        <div>
-          <p className="mb-3 text-sm text-muted-foreground">{t("onb.prompts.lookingHint")}</p>
-          <Textarea value={lookingFor} onChange={(e) => setLookingFor(e.target.value)} rows={4} />
-        </div>
+        <Textarea
+          value={form.best_advice}
+          onChange={(e) => set('best_advice', e.target.value)}
+          rows={5}
+          placeholder="The best advice…"
+          className="resize-none"
+        />
       ),
-      valid: true,
     },
-  ];
+    form.role === 'mentor'
+      ? {
+          title: 'Almost done!',
+          valid: true,
+          content: (
+            <div className="space-y-6">
+              <div className="space-y-1.5">
+                <Label>Mentees I&apos;d love to meet…</Label>
+                <Textarea
+                  value={form.mentee_prompt}
+                  onChange={(e) => set('mentee_prompt', e.target.value)}
+                  rows={4}
+                  placeholder="I love working with students who…"
+                  className="resize-none"
+                />
+              </div>
+              <div className="space-y-4">
+                <Label>How many mentees can you take on?</Label>
+                <div className="flex flex-col items-center gap-4">
+                  <span className="text-7xl font-bold text-primary">{form.mentee_cap}</span>
+                  <div className="w-full px-2">
+                    <Slider
+                      min={1}
+                      max={5}
+                      step={1}
+                      value={[form.mentee_cap]}
+                      onValueChange={([v]) => set('mentee_cap', v)}
+                      className="w-full"
+                    />
+                    <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+                      <span>1</span>
+                      <span>5</span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-center text-xs text-muted-foreground">
+                  You can change this later in your profile.
+                </p>
+              </div>
+            </div>
+          ),
+        }
+      : {
+          title: 'Almost done!',
+          valid: true,
+          content: (
+            <div className="space-y-1.5">
+              <Label>I&apos;m looking for a mentor who…</Label>
+              <Textarea
+                value={form.mentor_prompt}
+                onChange={(e) => set('mentor_prompt', e.target.value)}
+                rows={5}
+                placeholder="Someone who can help me navigate…"
+                className="resize-none"
+              />
+            </div>
+          ),
+        },
+  ]
 
-  const cur = steps[step];
+  const cur = steps[step]
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto flex max-w-md flex-col px-6 pb-10 pt-8">
-        <div className="mb-6 flex gap-1.5">
-          {steps.map((_, i) => (
-            <div key={i} className={`h-1.5 flex-1 rounded-full ${i <= step ? "bg-primary" : "bg-muted"}`} />
+      <div className="mx-auto flex w-full max-w-[480px] flex-col px-6 pb-10 pt-8">
+        {/* Progress bar */}
+        <div className="mb-6 flex gap-1">
+          {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
+            <div
+              key={i}
+              className={`h-1.5 flex-1 rounded-full transition-colors ${
+                i <= step ? 'bg-primary' : 'bg-muted'
+              }`}
+            />
           ))}
         </div>
-        <h1 className="text-2xl font-bold">{cur.title}</h1>
-        <div className="mt-6">{cur.content}</div>
+
+        {cur.title && (
+          <h1 className="mb-6 text-2xl font-bold text-foreground">{cur.title}</h1>
+        )}
+
+        <div className="flex-1">{cur.content}</div>
+
         <div className="mt-10 flex gap-3">
           {step > 0 && (
-            <Button variant="outline" onClick={() => setStep(step - 1)} className="flex-1">
-              <ArrowLeft className="mr-2 h-4 w-4" /> {t("common.back")}
+            <Button variant="outline" onClick={() => setStep(step - 1)} className="flex-1 rounded-full">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back
             </Button>
           )}
           {step < steps.length - 1 ? (
-            <Button onClick={() => setStep(step + 1)} disabled={!cur.valid} className="flex-1">
-              {t("common.next")} <ArrowRight className="ml-2 h-4 w-4" />
+            <Button
+              onClick={() => setStep(step + 1)}
+              disabled={!cur.valid}
+              className="flex-1 rounded-full"
+            >
+              Continue <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           ) : (
-            <Button onClick={finish} disabled={saving} className="flex-1">
-              {saving ? t("common.saving") : t("common.finish")}
+            <Button
+              onClick={finish}
+              disabled={saving || !form.role}
+              className="flex-1 rounded-full"
+            >
+              {saving ? 'Saving…' : "Let's go!"}
             </Button>
           )}
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 function RoleCard({
-  active, onClick, icon, title, desc,
-}: { active: boolean; onClick: () => void; icon: React.ReactNode; title: string; desc: string }) {
+  active,
+  onClick,
+  icon,
+  title,
+  desc,
+}: {
+  active: boolean
+  onClick: () => void
+  icon: React.ReactNode
+  title: string
+  desc: string
+}) {
   return (
-    <button type="button" onClick={onClick}
+    <button
+      type="button"
+      onClick={onClick}
       className={`flex w-full items-start gap-4 rounded-2xl border-2 p-4 text-left transition ${
-        active ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"
-      }`}>
-      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">{icon}</div>
+        active ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/40'
+      }`}
+    >
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        {icon}
+      </div>
       <div>
-        <h3 className="font-semibold">{title}</h3>
+        <h3 className="font-semibold text-foreground">{title}</h3>
         <p className="mt-0.5 text-sm text-muted-foreground">{desc}</p>
       </div>
     </button>
-  );
+  )
 }

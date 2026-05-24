@@ -53,7 +53,7 @@
   --primary-glow: oklch(0.78 0.16 45);     /* peach */
   --primary-foreground: oklch(1 0 0);
 
-  --secondary: oklch(0.45 0.09 200);       /* deep teal */
+  --secondary: oklch(0.60 0.10 185);       /* teal #2a9d8f */
   --secondary-foreground: oklch(1 0 0);
 
   --accent: oklch(0.93 0.04 80);
