@@ -21,23 +21,33 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | null>(null)
 
 async function fetchProfileForUser(userId: string): Promise<ProfileWithDetails | null> {
-  const { data: profileData, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('user_id', userId)
-    .single()
+  try {
+    return await Promise.race([
+      (async () => {
+        const { data: profileData, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .single()
 
-  if (error || !profileData) return null
+        if (error || !profileData) return null
 
-  const [{ data: langs }, { data: ints }] = await Promise.all([
-    supabase.from('profile_languages').select('language').eq('profile_id', profileData.id),
-    supabase.from('profile_interests').select('interest').eq('profile_id', profileData.id),
-  ])
+        const [{ data: langs }, { data: ints }] = await Promise.all([
+          supabase.from('profile_languages').select('language').eq('profile_id', profileData.id),
+          supabase.from('profile_interests').select('interest').eq('profile_id', profileData.id),
+        ])
 
-  return {
-    ...profileData,
-    languages: langs?.map((l) => l.language) ?? [],
-    interests: ints?.map((i) => i.interest) ?? [],
+        return {
+          ...profileData,
+          languages: langs?.map((l) => l.language) ?? [],
+          interests: ints?.map((i) => i.interest) ?? [],
+        }
+      })(),
+      // Give up after 8 seconds — caller handles null as a load failure
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+    ])
+  } catch {
+    return null
   }
 }
 
