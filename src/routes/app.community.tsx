@@ -51,30 +51,21 @@ function CommunityTab() {
       .single()
     setGlobalRoom(global)
 
-    // Language rooms — fetch for user's languages, then check >= 2 users
+    // Language rooms — show rooms for the user's non-English languages.
+    // English is excluded because the Global Chat already covers English speakers.
     const userLangCodes = profile.languages
       .map((l) => LANG_CODE[l])
-      .filter(Boolean)
+      .filter((code): code is string => Boolean(code) && code !== 'en')
 
     if (userLangCodes.length > 0) {
-      const [{ data: rooms }, { data: langData }] = await Promise.all([
-        supabase.from('community_rooms').select('*').eq('type', 'language').in('language_code', userLangCodes),
-        supabase.from('profile_languages').select('language, profile_id').in('language', profile.languages),
-      ])
-
-      // Count users per language
-      const langUserCount: Record<string, Set<string>> = {}
-      for (const row of langData ?? []) {
-        ;(langUserCount[row.language] ??= new Set()).add(row.profile_id)
-      }
-      const activeLangCodes = new Set(
-        Object.entries(langUserCount)
-          .filter(([, set]) => set.size >= 2)
-          .map(([lang]) => LANG_CODE[lang])
-          .filter(Boolean),
-      )
-
-      setLangRooms((rooms ?? []).filter((r) => r.language_code && activeLangCodes.has(r.language_code)))
+      const { data: rooms } = await supabase
+        .from('community_rooms')
+        .select('*')
+        .eq('type', 'language')
+        .in('language_code', userLangCodes)
+      setLangRooms(rooms ?? [])
+    } else {
+      setLangRooms([])
     }
 
     // Group rooms the user is a member of

@@ -23,10 +23,19 @@ function LoginPage() {
     setSubmitting(true)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password,
-      })
+      const loginTimeout = new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new Error('Sign-in timed out — a browser extension may be blocking the request. Try disabling your ad blocker, or use an incognito window.')),
+          15000,
+        ),
+      )
+      const { error } = await Promise.race([
+        supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password,
+        }),
+        loginTimeout,
+      ])
 
       if (error) {
         toast.error(error.message)

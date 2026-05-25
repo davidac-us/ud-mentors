@@ -147,7 +147,7 @@ function OnboardingPage() {
         )
       }
 
-      markOnboarded()
+      markOnboarded(form.languages, form.interests)
       navigate({ to: '/app/discover' })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Something went wrong.')

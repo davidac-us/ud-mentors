@@ -15,7 +15,7 @@ type AuthContextType = {
   loading: boolean
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
-  markOnboarded: () => void
+  markOnboarded: (languages?: string[], interests?: string[]) => void
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -53,8 +53,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(p)
   }
 
-  function markOnboarded() {
-    setProfile((prev) => (prev ? { ...prev, onboarded: true } : null))
+  function markOnboarded(languages?: string[], interests?: string[]) {
+    setProfile((prev) =>
+      prev
+        ? {
+            ...prev,
+            onboarded: true,
+            ...(languages !== undefined && { languages }),
+            ...(interests !== undefined && { interests }),
+          }
+        : null,
+    )
   }
 
   useEffect(() => {
