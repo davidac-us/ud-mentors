@@ -8,12 +8,47 @@ Target users: international undergrad/grad students at UD. Mentors are experienc
 
 ---
 
-## Current session goal
-✅ Fixed: login page navigation (removed redundant getSession check — app.tsx guard handles the redirect)
-✅ Fixed: onboarding "Saving..." stuck — root cause was a Chrome extension (ad blocker / privacy extension) silently dropping requests to supabase.co. Use incognito or whitelist localhost + supabase.co in your extension. The upsert itself works correctly (< 100ms when not blocked).
-✅ Tested: full signup → onboarding → app shell flow confirmed working in incognito Chrome.
+## Last session summary (2026-05-24)
 
-Next: explore the app shell — check Discover, Chats, Community, Events, Profile tabs all render and load data correctly.
+All changes are committed and pushed to `main`.
+
+### Completed this session
+- ✅ **Community tab — language rooms**: removed ≥2 users gate; filter out English (Global Chat covers it); language rooms now appear for single users.
+- ✅ **Community tab — auto-join on onboarding**: `markOnboarded(languages, interests)` now patches full profile state synchronously so the Community tab sees the correct languages immediately without a page refresh.
+- ✅ **Optimistic UI in Chats & Community**: messages appear instantly with `temp-${Date.now()}` IDs; Realtime event deduplicates by matching `sender_id + content`.
+- ✅ **Auto-scroll to latest message** in both Chats and Community via `useRef` + `useEffect`.
+- ✅ **Infinite spinner fix**: `fetchProfileForUser()` now has an 8-second `Promise.race` timeout; `app.tsx` shows a "Retry" button instead of spinning forever if the profile fails to load.
+- ✅ **Events tab — major rewrite**:
+  - Room field (alongside Location) for both events and clubs
+  - Club-only: Meeting Days (pill multi-select Mon–Sun), Meeting Time, Recurrence (Weekly / Biweekly / Monthly)
+  - Club-only: Start Date (reuses `date` column, labeled "Start Date")
+  - Search bar filters by title + description
+  - "Your Postings" panel with Edit / Delete per post
+  - Tapping any card opens a full-screen `DetailView` overlay (← Close, Edit, Delete for owner; Posted by with avatar)
+  - RLS policies added: poster can UPDATE and DELETE their own events
+- ✅ **Club → Community group chat**:
+  - Creating a club inserts a `community_rooms` row (`type='group'`) named after the club and links it via `events.community_room_id`
+  - Creator is auto-added to `community_room_members` → chat appears immediately in their Community tab
+  - Club `DetailView` shows Join Club / Leave Club button for other users; tapping join adds them to the room
+
+### Pending action (user must do before testing club chat)
+Run this in Supabase SQL Editor → New Query:
+```sql
+ALTER TABLE public.events
+  ADD COLUMN IF NOT EXISTS community_room_id uuid
+    REFERENCES public.community_rooms(id) ON DELETE SET NULL;
+```
+(File: `supabase/migrations/20260524000002_event_community_room.sql`)
+
+### Migration status
+| File | Status |
+|---|---|
+| `20260523000000_fresh_schema.sql` | ✅ Run |
+| `20260524000000_add_event_club_fields.sql` | ✅ Run |
+| `20260524000001_event_rls_edit_delete.sql` | ✅ Run |
+| `20260524000002_event_community_room.sql` | ⚠️ **NOT YET RUN** |
+
+---
 
 ## Tech stack
 
@@ -117,9 +152,10 @@ src/
     auth.tsx                   Auth context — AuthProvider, useAuth(), ProfileWithDetails type.
                                Exposes: session, user, profile, loading, signOut,
                                refreshProfile, markOnboarded.
-                               markOnboarded() synchronously patches local state to
-                               onboarded:true — use this instead of refreshProfile()
-                               before navigating away from onboarding.
+                               markOnboarded(languages?, interests?) synchronously patches
+                               local state — use this instead of refreshProfile() before
+                               navigating away from onboarding. Includes 8s timeout on
+                               fetchProfileForUser() via Promise.race.
 
   integrations/supabase/
     client.ts                  Supabase JS client (lazy singleton via Proxy).
@@ -133,18 +169,36 @@ src/
     index.tsx                  Landing page — flag grid, CTA buttons, auth redirect.
     signup.tsx                 Signup — .edu email validation, Supabase signUp call.
     login.tsx                  Login — checks onboarded flag, routes to onboarding or app.
+                               Has 15s timeout with extension-blocking message.
     onboarding.tsx             7-step onboarding flow. Writes profiles + junction tables.
-                               Uses markOnboarded() (not refreshProfile) before navigating.
+                               Calls markOnboarded(languages, interests) before navigating.
     app.tsx                    Protected shell — auth guard, max-w-[480px] layout, BottomNav.
+                               Three separate render paths: loading spinner | !session (null,
+                               useEffect redirects) | !profile (retry button) | content.
     app.index.tsx              Redirects /app/ → /app/discover via beforeLoad.
     app.discover.tsx           Discover tab (mentee swipe feed / mentor request queue).
                                ALSO exports shared UI: Header, EmptyState, Avatar, Loader.
                                Other tab files import from here — do not delete this file.
     app.chats.tsx              Chats tab — lists matched pairs, inline ChatView with
-                               Supabase Realtime subscription.
-    app.community.tsx          Community tab — global chat, language rooms, group chats.
+                               Supabase Realtime subscription. Optimistic UI + auto-scroll.
+    app.community.tsx          Community tab — global chat, language rooms (all non-English
+                               languages from onboarding; no ≥2 user gate), group chats.
                                Inline RoomChat with Realtime subscription.
-    app.events.tsx             Events & Clubs tab — feed + post dialog.
+                               Optimistic UI + auto-scroll. Language rooms auto-joined
+                               at onboarding via community_room_members insert.
+    app.events.tsx             Events & Clubs tab. Features:
+                               - Event/Club toggle + search bar
+                               - EventCard → tapping opens DetailView full-screen overlay
+                               - DetailView: date/schedule/location/room, description,
+                                 Posted by (avatar + name), Edit/Delete for owner,
+                                 Join Club / Leave Club button for clubs (updates
+                                 community_room_members live)
+                               - PostForm dialog: title, description, location+room,
+                                 date/time (events) or start date (clubs),
+                                 club-only: meeting days pills, time, recurrence pills
+                               - "Your Postings" panel with edit/delete
+                               - post(): clubs create community_rooms entry + link via
+                                 community_room_id + auto-join creator to room
     app.profile.tsx            Profile tab — editable fields, save to Supabase, sign-out.
 
   components/
@@ -154,9 +208,11 @@ src/
 
 supabase/
   migrations/
-    20260523000000_fresh_schema.sql   Full DB schema — drops old Lovable tables,
-                                      creates 9 new tables, RLS policies, trigger for
-                                      auto-profile creation, seeds community rooms.
+    20260523000000_fresh_schema.sql          Full DB schema (run ✅)
+    20260524000000_add_event_club_fields.sql room, meeting_days, meeting_time, recurrence
+                                             columns on events (run ✅)
+    20260524000001_event_rls_edit_delete.sql poster UPDATE + DELETE RLS policies (run ✅)
+    20260524000002_event_community_room.sql  community_room_id FK on events (⚠️ NOT RUN)
 ```
 
 ---
@@ -168,16 +224,19 @@ supabase/
 - [x] Auth flow — signup (.edu), email confirmation, login, protected routes
 - [x] 7-step onboarding (role, profile info, languages, interests, prompts, mentor capacity)
 - [x] Discover tab — compatibility feed for mentees, request queue for mentors
-- [x] Chats tab — real-time 1:1 messaging between matched pairs
-- [x] Community tab — global chat, language rooms (≥2 users to appear), group chats
-- [x] Events tab — events and clubs feed with post dialog
+- [x] Chats tab — real-time 1:1 messaging, optimistic UI, auto-scroll
+- [x] Community tab — global chat, language rooms (non-English, no user count gate), group chats, optimistic UI, auto-scroll
+- [x] Events tab — events/clubs feed, search, expandable detail view, "Posted by", edit/delete own posts
+- [x] Clubs — room + meeting schedule + recurrence + start date fields
+- [x] Club → Community group chat: creating a club auto-creates a group room; Join/Leave from club detail
 - [x] Profile tab — editable profile, language/interest management, sign-out
 - [x] Bottom nav with role-aware labels
 - [x] Flag emoji rendering fix (Noto Color Emoji font via Google Fonts)
-- [x] Onboarding redirect race condition fix (`markOnboarded`)
+- [x] Infinite spinner fix (8s timeout + retry button)
+- [x] Onboarding redirect race condition fix (`markOnboarded` with languages + interests)
 
 ### Still needs to be built
-- [ ] **Apply the migration** — `supabase/migrations/20260523000000_fresh_schema.sql` needs to be run against the production Supabase project (via `supabase db push` or pasted into the SQL editor)
+- [ ] **Run migration** — `20260524000002_event_community_room.sql` in Supabase SQL editor (adds `community_room_id` to events)
 - [ ] Mentee cap enforcement — UI doesn't yet prevent a mentee from requesting more than 3 mentors
 - [ ] Match expiry enforcement — `expires_at` exists in DB but is not checked in the UI
 - [ ] Unread message badges on the bottom nav
@@ -215,4 +274,10 @@ Every `supabase.channel(name).subscribe()` call in a `useEffect` must be cleaned
 This is a Windows font issue — Regional Indicator Symbol pairs need a color emoji font. The fix is already applied: Noto Color Emoji is loaded from Google Fonts in `__root.tsx`, and the flag spans in `index.tsx` have an explicit `fontFamily` style. If they regress, check the Network tab to confirm the Google Fonts request is succeeding.
 
 **`markOnboarded` vs `refreshProfile`**
-After onboarding saves to the DB, call `markOnboarded()` (synchronous local state patch) before navigating to `/app/discover`. Do **not** use `await refreshProfile()` there — it triggers an async `setProfile` that races with `app.tsx`'s `useEffect` guard, causing an immediate redirect back to `/onboarding`.
+After onboarding saves to the DB, call `markOnboarded(languages, interests)` (synchronous local state patch) before navigating to `/app/discover`. Do **not** use `await refreshProfile()` there — it triggers an async `setProfile` that races with `app.tsx`'s `useEffect` guard, causing an immediate redirect back to `/onboarding`.
+
+**AdGuard / ad blocker blocks Supabase**
+AdGuard and similar extensions silently drop all requests to `*.supabase.co` in regular Chrome. This manifests as: Network tab shows no requests, spinner never resolves, login times out. Always test in incognito Chrome (extensions disabled by default). Do not waste time debugging "Supabase issues" before confirming requests are actually reaching the network.
+
+**Optimistic UI pattern (Chats + Community)**
+Messages are added immediately with ID `temp-${Date.now()}` before the DB insert. The Realtime handler deduplicates by checking if any existing message matches `sender_id + content` — if so, it replaces the temp entry rather than adding a duplicate.
