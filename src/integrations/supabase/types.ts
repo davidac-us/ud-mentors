@@ -269,6 +269,7 @@ export type Database = {
           meeting_days: string
           meeting_time: string
           recurrence: string
+          community_room_id: string | null
           created_at: string
         }
         Insert: {
@@ -283,6 +284,7 @@ export type Database = {
           meeting_days?: string
           meeting_time?: string
           recurrence?: string
+          community_room_id?: string | null
           created_at?: string
         }
         Update: {
@@ -297,6 +299,7 @@ export type Database = {
           meeting_days?: string
           meeting_time?: string
           recurrence?: string
+          community_room_id?: string | null
           created_at?: string
         }
         Relationships: [

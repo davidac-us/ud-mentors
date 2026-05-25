@@ -154,11 +154,38 @@ function EventsTab() {
       recurrence:   kind === 'club' ? recurrence  : '',
     }
 
-    const { error } = editingId
-      ? await supabase.from('events').update(payload).eq('id', editingId)
-      : await supabase.from('events').insert({ ...payload, poster_id: profile.id })
+    if (editingId) {
+      // Update — don't touch community_room_id
+      const { error } = await supabase.from('events').update(payload).eq('id', editingId)
+      if (error) { toast.error(error.message); setPosting(false); return }
+    } else {
+      // Create a group chat room first if this is a club
+      let communityRoomId: string | null = null
+      if (kind === 'club') {
+        const { data: chatRoom } = await supabase
+          .from('community_rooms')
+          .insert({ type: 'group', name: title.trim().slice(0, 60) })
+          .select('id')
+          .single()
+        communityRoomId = chatRoom?.id ?? null
+      }
 
-    if (error) { toast.error(error.message); setPosting(false); return }
+      const { data: newEvent, error } = await supabase
+        .from('events')
+        .insert({ ...payload, poster_id: profile.id, community_room_id: communityRoomId })
+        .select('id')
+        .single()
+
+      if (error || !newEvent) { toast.error(error?.message ?? 'Failed to post.'); setPosting(false); return }
+
+      // Auto-join creator to the club's group chat
+      if (communityRoomId) {
+        await supabase.from('community_room_members').insert({
+          room_id: communityRoomId,
+          profile_id: profile.id,
+        })
+      }
+    }
 
     toast.success(editingId ? 'Post updated!' : kind === 'event' ? 'Event posted!' : 'Club posted!')
     setDialogOpen(false)
@@ -194,6 +221,7 @@ function EventsTab() {
     return (
       <DetailView
         event={selected}
+        profile={profile}
         isOwner={selected.poster_id === profile?.id}
         onClose={() => setSelected(null)}
         onEdit={() => openEdit(selected)}
@@ -337,12 +365,14 @@ function EventsTab() {
 
 function DetailView({
   event: e,
+  profile,
   isOwner,
   onClose,
   onEdit,
   onDelete,
 }: {
   event: EventRow
+  profile: import('@/lib/auth').ProfileWithDetails | null
   isOwner: boolean
   onClose: () => void
   onEdit: () => void
@@ -353,6 +383,47 @@ function DetailView({
     ? formatSchedule(asClub.meeting_days ?? '', asClub.meeting_time ?? '', asClub.recurrence ?? '')
     : null
   const fullLocation = [e.location, asClub.room].filter(Boolean).join(' · ')
+  const communityRoomId = e.community_room_id ?? null
+
+  // Club membership state
+  const [isMember, setIsMember] = useState<boolean | null>(null)
+  const [joining, setJoining] = useState(false)
+
+  useEffect(() => {
+    if (!communityRoomId || !profile) return
+    supabase
+      .from('community_room_members')
+      .select('room_id')
+      .eq('room_id', communityRoomId)
+      .eq('profile_id', profile.id)
+      .maybeSingle()
+      .then(({ data }) => setIsMember(!!data))
+  }, [communityRoomId, profile?.id])
+
+  const joinClub = async () => {
+    if (!profile || !communityRoomId) return
+    setJoining(true)
+    const { error } = await supabase
+      .from('community_room_members')
+      .insert({ room_id: communityRoomId, profile_id: profile.id })
+    if (error) { toast.error(error.message); setJoining(false); return }
+    setIsMember(true)
+    setJoining(false)
+    toast.success('Joined! Open the Community tab to chat.')
+  }
+
+  const leaveClub = async () => {
+    if (!profile || !communityRoomId) return
+    setJoining(true)
+    await supabase
+      .from('community_room_members')
+      .delete()
+      .eq('room_id', communityRoomId)
+      .eq('profile_id', profile.id)
+    setIsMember(false)
+    setJoining(false)
+    toast.success('You left the club.')
+  }
 
   return (
     <div className="min-h-screen bg-background px-5 pb-10 pt-6">
@@ -424,6 +495,30 @@ function DetailView({
           <p className="text-sm font-semibold text-foreground">{e.poster_name}</p>
         </div>
       </div>
+
+      {/* Join / Leave club */}
+      {e.type === 'club' && communityRoomId && isMember !== null && (
+        <div className="mt-4">
+          {isMember ? (
+            <Button
+              variant="outline"
+              className="w-full rounded-full"
+              onClick={leaveClub}
+              disabled={joining}
+            >
+              {joining ? 'Leaving…' : 'Leave Club'}
+            </Button>
+          ) : (
+            <Button
+              className="w-full rounded-full"
+              onClick={joinClub}
+              disabled={joining}
+            >
+              {joining ? 'Joining…' : 'Join Club'}
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
