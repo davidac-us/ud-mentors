@@ -95,31 +95,36 @@ function OnboardingPage() {
   const finish = async () => {
     if (!user || !form.role) return
     setSaving(true)
-
     try {
       // Upsert the profile — creates it if the trigger didn't fire, updates it if it exists
-      const { data: myProfile, error: upsertErr } = await supabase
-        .from('profiles')
-        .upsert(
-          {
-            user_id: user.id,
-            name: profile?.name || user.email?.split('@')[0] || '',
-            role: form.role,
-            country: form.country.trim() || null,
-            university: 'University of Delaware',
-            year: form.year || null,
-            major: form.major.trim() || null,
-            fun_fact: form.fun_fact.trim() || null,
-            best_advice: form.best_advice.trim() || null,
-            mentor_prompt: form.role === 'mentee' ? form.mentor_prompt.trim() || null : null,
-            mentee_prompt: form.role === 'mentor' ? form.mentee_prompt.trim() || null : null,
-            mentee_cap: form.role === 'mentor' ? form.mentee_cap : null,
-            onboarded: true,
-          },
-          { onConflict: 'user_id' },
-        )
-        .select('id')
-        .single()
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Supabase timed out. Is the project paused or unreachable?')), 60000),
+      )
+      const { data: myProfile, error: upsertErr } = await Promise.race([
+        supabase
+          .from('profiles')
+          .upsert(
+            {
+              user_id: user.id,
+              name: profile?.name || user.email?.split('@')[0] || '',
+              role: form.role,
+              country: form.country.trim() || null,
+              university: 'University of Delaware',
+              year: form.year || null,
+              major: form.major.trim() || null,
+              fun_fact: form.fun_fact.trim() || null,
+              best_advice: form.best_advice.trim() || null,
+              mentor_prompt: form.role === 'mentee' ? form.mentor_prompt.trim() || null : null,
+              mentee_prompt: form.role === 'mentor' ? form.mentee_prompt.trim() || null : null,
+              mentee_cap: form.role === 'mentor' ? form.mentee_cap : null,
+              onboarded: true,
+            },
+            { onConflict: 'user_id' },
+          )
+          .select('id')
+          .single(),
+        timeout,
+      ])
 
       if (upsertErr || !myProfile) {
         toast.error(upsertErr?.message ?? 'Failed to save profile. Please try again.')

@@ -276,6 +276,14 @@ CREATE POLICY "events: authenticated can post"
   WITH CHECK (poster_id IN (SELECT id FROM public.profiles WHERE user_id = auth.uid()));
 
 -- ============================================================
+-- GRANTS
+-- ============================================================
+
+GRANT USAGE ON SCHEMA public TO authenticated, anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon;
+
+-- ============================================================
 -- TRIGGER: auto-create profile on signup
 -- ============================================================
 

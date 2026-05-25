@@ -39,13 +39,17 @@ function SignupPage() {
     setSubmitting(true)
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
-        password,
-        options: {
-          data: { full_name: fullName.trim() },
-        },
-      })
+      const signUpTimeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Request timed out — Supabase may be rate-limiting. Wait a minute and try again.')), 30000),
+      )
+      const { data, error } = await Promise.race([
+        supabase.auth.signUp({
+          email: email.trim().toLowerCase(),
+          password,
+          options: { data: { full_name: fullName.trim() } },
+        }),
+        signUpTimeout,
+      ])
 
       if (error) {
         toast.error(error.message)

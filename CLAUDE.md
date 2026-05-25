@@ -8,6 +8,13 @@ Target users: international undergrad/grad students at UD. Mentors are experienc
 
 ---
 
+## Current session goal
+✅ Fixed: login page navigation (removed redundant getSession check — app.tsx guard handles the redirect)
+✅ Fixed: onboarding "Saving..." stuck — root cause was a Chrome extension (ad blocker / privacy extension) silently dropping requests to supabase.co. Use incognito or whitelist localhost + supabase.co in your extension. The upsert itself works correctly (< 100ms when not blocked).
+✅ Tested: full signup → onboarding → app shell flow confirmed working in incognito Chrome.
+
+Next: explore the app shell — check Discover, Chats, Community, Events, Profile tabs all render and load data correctly.
+
 ## Tech stack
 
 | Layer | Tool |
