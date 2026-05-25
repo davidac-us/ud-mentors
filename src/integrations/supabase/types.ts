@@ -265,6 +265,10 @@ export type Database = {
           description: string
           date: string | null
           location: string
+          room: string
+          meeting_days: string
+          meeting_time: string
+          recurrence: string
           created_at: string
         }
         Insert: {
@@ -275,6 +279,10 @@ export type Database = {
           description?: string
           date?: string | null
           location?: string
+          room?: string
+          meeting_days?: string
+          meeting_time?: string
+          recurrence?: string
           created_at?: string
         }
         Update: {
@@ -285,6 +293,10 @@ export type Database = {
           description?: string
           date?: string | null
           location?: string
+          room?: string
+          meeting_days?: string
+          meeting_time?: string
+          recurrence?: string
           created_at?: string
         }
         Relationships: [
