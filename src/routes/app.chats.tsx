@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/lib/auth'
 import { supabase } from '@/integrations/supabase/client'
 import { MessageCircle } from 'lucide-react'
@@ -132,7 +132,12 @@ function ChatView({
   const { profile } = useAuth()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
-  const [sending, setSending] = useState(false)
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to bottom whenever messages change
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   useEffect(() => {
     // Fetch existing messages
@@ -143,13 +148,26 @@ function ChatView({
       .order('created_at', { ascending: true })
       .then(({ data }) => setMessages((data as ChatMessage[]) ?? []))
 
-    // Real-time subscription
+    // Real-time subscription — deduplicate against optimistic messages
     const channel = supabase
       .channel(`match:${matchId}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `match_id=eq.${matchId}` },
-        (payload) => setMessages((prev) => [...prev, payload.new as ChatMessage]),
+        (payload) => {
+          const msg = payload.new as ChatMessage
+          setMessages((prev) => {
+            const tempIdx = prev.findIndex(
+              (m) => m.id.startsWith('temp-') && m.sender_id === msg.sender_id && m.content === msg.content,
+            )
+            if (tempIdx >= 0) {
+              const next = [...prev]
+              next[tempIdx] = msg
+              return next
+            }
+            return [...prev, msg]
+          })
+        },
       )
       .subscribe()
 
@@ -157,16 +175,17 @@ function ChatView({
   }, [matchId])
 
   const send = async () => {
-    if (!profile || !input.trim() || sending) return
-    setSending(true)
+    if (!profile || !input.trim()) return
     const content = input.trim()
     setInput('')
-    await supabase.from('messages').insert({
-      match_id: matchId,
-      sender_id: profile.id,
-      content,
-    })
-    setSending(false)
+
+    // Optimistic update — show message immediately
+    setMessages((prev) => [
+      ...prev,
+      { id: `temp-${Date.now()}`, sender_id: profile.id, content, created_at: new Date().toISOString() },
+    ])
+
+    await supabase.from('messages').insert({ match_id: matchId, sender_id: profile.id, content })
   }
 
   return (
@@ -203,6 +222,7 @@ function ChatView({
             </div>
           )
         })}
+        <div ref={bottomRef} />
       </div>
 
       {/* Input */}
@@ -216,7 +236,7 @@ function ChatView({
         />
         <button
           onClick={send}
-          disabled={!input.trim() || sending}
+          disabled={!input.trim()}
           className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50 transition-opacity"
         >
           Send

@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/lib/auth'
 import { supabase } from '@/integrations/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -294,7 +294,12 @@ function RoomChat({ room, onBack }: { room: CommunityRoom; onBack: () => void })
   const [messages, setMessages] = useState<RoomMessage[]>([])
   const [senderNames, setSenderNames] = useState<Record<string, string>>({})
   const [input, setInput] = useState('')
-  const [sending, setSending] = useState(false)
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to bottom whenever messages change
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
   useEffect(() => {
     supabase
@@ -307,7 +312,8 @@ function RoomChat({ room, onBack }: { room: CommunityRoom; onBack: () => void })
         const msgs = (data as RoomMessage[]) ?? []
         setMessages(msgs)
 
-        const ids = [...new Set(msgs.map((m) => m.sender_id))]
+        // Seed current user's name so Realtime handler doesn't need to fetch it
+        const ids = [...new Set([...(profile ? [profile.id] : []), ...msgs.map((m) => m.sender_id)])]
         if (ids.length) {
           const { data: senders } = await supabase.from('profiles').select('id, name').in('id', ids)
           const map: Record<string, string> = {}
@@ -323,11 +329,26 @@ function RoomChat({ room, onBack }: { room: CommunityRoom; onBack: () => void })
         { event: 'INSERT', schema: 'public', table: 'community_messages', filter: `room_id=eq.${room.id}` },
         async (payload) => {
           const msg = payload.new as RoomMessage
-          setMessages((prev) => [...prev, msg])
-          if (!senderNames[msg.sender_id]) {
-            const { data } = await supabase.from('profiles').select('name').eq('id', msg.sender_id).single()
-            if (data) setSenderNames((prev) => ({ ...prev, [msg.sender_id]: data.name }))
-          }
+          // Deduplicate against optimistic messages then append
+          setMessages((prev) => {
+            const tempIdx = prev.findIndex(
+              (m) => m.id.startsWith('temp-') && m.sender_id === msg.sender_id && m.content === msg.content,
+            )
+            if (tempIdx >= 0) {
+              const next = [...prev]
+              next[tempIdx] = msg
+              return next
+            }
+            return [...prev, msg]
+          })
+          // Fetch sender name if not yet known
+          setSenderNames((prev) => {
+            if (prev[msg.sender_id]) return prev
+            supabase.from('profiles').select('name').eq('id', msg.sender_id).single().then(({ data }) => {
+              if (data) setSenderNames((p) => ({ ...p, [msg.sender_id]: data.name }))
+            })
+            return prev
+          })
         },
       )
       .subscribe()
@@ -336,12 +357,17 @@ function RoomChat({ room, onBack }: { room: CommunityRoom; onBack: () => void })
   }, [room.id])
 
   const send = async () => {
-    if (!profile || !input.trim() || sending) return
-    setSending(true)
+    if (!profile || !input.trim()) return
     const content = input.trim()
     setInput('')
+
+    // Optimistic update — show message immediately
+    setMessages((prev) => [
+      ...prev,
+      { id: `temp-${Date.now()}`, sender_id: profile.id, content, created_at: new Date().toISOString() },
+    ])
+
     await supabase.from('community_messages').insert({ room_id: room.id, sender_id: profile.id, content })
-    setSending(false)
   }
 
   return (
@@ -383,6 +409,7 @@ function RoomChat({ room, onBack }: { room: CommunityRoom; onBack: () => void })
             </div>
           )
         })}
+        <div ref={bottomRef} />
       </div>
 
       <div className="border-t border-border px-5 py-3 bg-card flex gap-2">
@@ -395,7 +422,7 @@ function RoomChat({ room, onBack }: { room: CommunityRoom; onBack: () => void })
         />
         <button
           onClick={send}
-          disabled={!input.trim() || sending}
+          disabled={!input.trim()}
           className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
         >
           Send
